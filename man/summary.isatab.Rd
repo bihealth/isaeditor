@@ -4,7 +4,12 @@
 \alias{summary.isatab}
 \title{Print generic summary}
 \usage{
-\method{summary}{isatab}(x, ...)
+\method{summary}{isatab}(object, ...)
+}
+\arguments{
+\item{object}{object of class isatab}
+
+\item{...}{any further arguments are ignored}
 }
 \description{
 Print generic summary
