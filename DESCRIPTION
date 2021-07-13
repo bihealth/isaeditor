@@ -1,0 +1,24 @@
+Package: isaeditor
+Title: Tools to manipulate ISATAB files
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "January",
+           family = "Weiner",
+           role = c("aut", "cre"),
+           email = "january.weiner@gmail.com",
+           comment = c(ORCID = "https://orcid.org/0000-0003-1438-7819"))
+Description: What the package does (one paragraph).
+License: GPL (>= 3)
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Imports:
+  colorDF,
+  tibble,
+  dplyr,
+  glue,
+  tidyr,
+  readr,
+  magrittr,
+  methods
