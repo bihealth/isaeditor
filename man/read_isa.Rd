@@ -17,6 +17,24 @@ be abbreviated)}
 
 \item{x}{isatab object}
 }
+\value{
+\code{read_isa()} returns either an object of class \code{isatab} (for study / assay files) or
+an object of class \code{isa_i} (for investigation files).
+}
 \description{
 Read or write an isatab file
+}
+\examples{
+\dontrun{
+isa_i <- read_isa("i_Investigation.txt")
+print(isa_i)
+
+isa_a <- #' read_isa("a_isatab_transcriptome_profiling_nucleotide_sequencing.txt")
+print(isa_a)
+summary(isa_a)
+
+}
+}
+\seealso{
+\code{\linkS4class{isatab}}
 }

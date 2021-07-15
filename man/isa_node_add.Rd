@@ -3,11 +3,23 @@
 \name{isa_node_add}
 \alias{isa_node_add}
 \alias{isa_node_rm}
-\title{Insert a node to the isatab}
+\alias{isa_property_add}
+\alias{isa_property_rm}
+\title{Add or remove nodes and properties}
 \usage{
-isa_node_add(x, node, columns = NULL, after = NULL)
+isa_node_add(x, node, columns = NULL, after_node = NULL)
 
 isa_node_rm(x, node_id)
+
+isa_property_add(
+  x,
+  property,
+  value = NA,
+  prop_node = NULL,
+  after_property = NULL
+)
+
+isa_property_rm(x, prop_ids)
 }
 \arguments{
 \item{x}{isatab object}
@@ -16,11 +28,38 @@ isa_node_rm(x, node_id)
 
 \item{columns}{(optional) character vector with columns to add}
 
-\item{after}{ID of the node after which the current node should be
+\item{after_node}{ID of the node after which the current node should be
 inserted}
 
-\item{node_id}{ID of the node to be removed}
+\item{node_id}{For \code{isa_node_rm}: character vector of node
+IDs to be removed.}
+
+\item{property}{Character vector with identifiers of the properties to be inserted}
+
+\item{value}{vector (if only one property is added) or data frame (if
+multiple properties are added) of values used to initialize the node /
+parameter. If multiple properties are added with one call, and values is
+a data frame, than it has to have column names identical to the
+\code{properties} vector.}
+
+\item{prop_node}{ID of the node in which to add the property (default:
+last node in the isatab).}
+
+\item{after_property}{ID of the property after which the parameter should
+be inserted (deault: last property)}
+
+\item{prop_ids}{IDs of the properties to be removed}
 }
 \description{
-Insert a node to the isatab
+Add or remove nodes and properties
+}
+\details{
+These functions manipulate the structure of an isatab. \code{isa_node_add}
+and \code{isa_node_rm} add or remove whole nodes.
+
+To add or remove properties (individual columns which are not nodes) belonging to a given
+node, use \code{isa_property_add} and \code{isa_property_rm}.
+}
+\seealso{
+isatab-class
 }

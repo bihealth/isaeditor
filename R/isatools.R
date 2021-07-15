@@ -1,4 +1,34 @@
 
+## reads an assay or study file
+.read_isa_assay <- function(file_name, type) {
+
+  x <- read_delim(file_name, col_names=FALSE, delim="\t", col_types=cols())
+
+  isa_stru <- tibble(col_name=as.matrix(x)[1, ]) %>%
+    mutate(col_id=paste0("ID", 1:n())) %>%
+    mutate(is_node=grepl("( Name|Protocol REF)$", .data[["col_name"]])) %>%
+    mutate(node_name=ifelse(.data[["is_node"]], .data[["col_name"]], NA)) %>%
+    mutate(node_id=ifelse(.data[["is_node"]], .data[["col_id"]], NA)) %>%
+    fill(.data[["node_name"]]) %>%
+    fill(.data[["node_id"]])
+
+
+  x <- read_delim(file_name, col_names=FALSE, delim="\t", skip=1, col_types=cols())
+  x <- as.colorDF(x)
+  colnames(x) <- isa_stru[["col_id"]]
+
+  ret <- list(
+              isa_stru=isa_stru,
+              contents=x,
+              n=nrow(x),
+              type=type
+  )
+
+  class(ret) <- c("isatab") #, class(ret))
+
+  ret
+}
+
 
 #' Read or write an isatab file
 #'
@@ -6,11 +36,24 @@
 #' @param file file name to read / write
 #' @param type Either "auto", or "investigation", "study", "assay" (can
 #' be abbreviated)
-#' @importFrom readr read_delim cols
+#' @importFrom readr read_delim cols read_tsv
 #' @importFrom glue glue
 #' @importFrom magrittr %>%
 #' @importFrom colorDF print_colorDF summary_colorDF as.colorDF
 #' @importFrom rlang .data
+#' @return `read_isa()` returns either an object of class `isatab` (for study / assay files) or
+#' an object of class `isa_i` (for investigation files).
+#' @seealso [`isatab-class`]
+#' @examples
+#' \dontrun{
+#' isa_i <- read_isa("i_Investigation.txt")
+#' print(isa_i)
+#'
+#' isa_a <- #' read_isa("a_isatab_transcriptome_profiling_nucleotide_sequencing.txt")
+#' print(isa_a)
+#' summary(isa_a)
+#'
+#' }
 #' @export
 read_isa <- function(file, type="auto") {
 
@@ -29,43 +72,15 @@ read_isa <- function(file, type="auto") {
 
   message(glue("Type is {type}"))
 
-  x <- read_delim(file, col_names=FALSE, delim="\t", col_types=cols())
+  if(type == "investigation") {
+    ret <- .read_investigation(file)
+  } else {
+    ret <- .read_isa_assay(file, type)
+  }
 
-  isa_stru <- tibble(col_name=as.matrix(x)[1, ]) %>%
-    mutate(is_node=grepl("( Name|Protocol REF)$", .data[["col_name"]])) %>%
-    mutate(node_name=ifelse(.data[["is_node"]], .data[["col_name"]], NA)) %>%
-    mutate(node_id=ifelse(.data[["is_node"]], paste0("ID", 1:n()), NA)) %>%
-    fill(.data[["node_name"]]) %>%
-    fill(.data[["node_id"]])
-
-
-  x <- read_delim(file, col_names=FALSE, delim="\t", skip=1, col_types=cols())
-  x <- as.colorDF(x)
-
-  ret <- list(
-              isa_stru=isa_stru,
-              contents=x,
-              n=nrow(x),
-              type=type
-  )
-
-  class(ret) <- c("isatab") #, class(ret))
-
-  return(ret)
+  ret
 }
 
-
-#' @export
-print.isatab <- function(x, ...) {
-
-  tmp <- x$contents
-  colnames(tmp) <- sprintf("%s [%s]", x$isa_stru[["col_name"]], x$isa_stru[["node_id"]])
-
-  df_style(tmp, "type.styles") <- c(df_style(tmp), list(node=list(fg="red", bg="white")))
-  col_type(tmp, colnames(tmp)[ x$isa_stru[["is_node"]] ]) <- "node"
-
-  print(tmp)
-}
 
 isa_get_nodes <- function(x) {
   stopifnot(is(x, "isatab"))
@@ -78,85 +93,7 @@ isa_get_nodes <- function(x) {
   ret
 }
 
-## provide a summary of values
-val_summary <- function(x) {
-  if(all(is.na(x))) {
-    return("All missing")
-  }
 
-  n_uniq <- length(unique(x))
-  if(n_uniq == 1) {
-    return(glue("One value: {x[1]}"))
-  }
-
-  if(n_uniq == length(x)) {
-    return(glue("All unique; {x[1]}..."))
-  }
-
-  n <- length(unique(x))
-  glue("{n} unique: {x[1]}...")
-}
-
-
-#' Print generic summary
-#' @param object object of class isatab
-#' @param ... any further arguments are ignored
-#' @importFrom dplyr filter n last mutate 
-#' @importFrom crayon style
-#' @export 
-summary.isatab <- function(object, ...) {
-  x <- object
-  nodes <- isa_get_nodes(x)
-  nodes_n <- length(nodes)
-  
-  cat(style(
-            glue("Isatab of type {x$type} with {x$n} samples and {nodes_n} nodes."),
-            "italic"
-  ))
-  cat("\n")
-
-  for(n in names(nodes)) {
-    node_name <- gsub(" Name$", "", nodes[n])
-    node_pos  <- which(x$isa_stru$node_id == n & x$isa_stru$is_node)
-    node_val  <- x$contents[[node_pos]][1]
-    node_d <- filter(x$isa_stru, .data[["node_id"]] == n & !.data[["is_node"]])
-    cat(style(glue("Node {node_name} [{n}] ({node_val}...)"), "bold"))
-    cat("\n")
-    if(nrow(node_d) > 0) {
-
-      for(i in 1:nrow(node_d)) {
-
-        val <- val_summary(x$contents[[node_pos + i]])
-        cn <- node_d[["col_name"]][i]
-        ws <- '  '
-
-        if(grepl("^(Unit|Term)", cn)) {
-          ws <- '    '
-        }
-        cat(glue('{ws}{cn} ({val})\n', .trim=FALSE))
-
-      }
-    }
-  }
-}
-
-
-isa_mod <- function(x, replacement, node, col=NULL) {
-  stopifnot(is(x, "isatab"))
-
-  stopifnot(length(replacement) == x$n)
-
-  if(is.null(col)) {
-    col <- node
-  }
-
-  stopifnot(sum(x$isa_stru$col_name == col & x$isa_stru$node_name == node) == 1)
-
-  col_pos <- which(x$isa_stru$col_name == col & x$isa_stru$node_name == node)
-
-  x$contents[[col_pos]] <- replacement
-  return(x)
-}
 
 #' @rdname read_isa
 #' @importFrom methods is
@@ -172,51 +109,59 @@ write_isa <- function(x, file) {
 
 
 
-
+#' Show nodes in an isatab
+#'
+#' Show nodes in an isatab
+#' @param x object of class `isatab`
+#' @seealso [`isatab-class`]
+#' @importFrom dplyr group_by summarise ungroup arrange
+#' @return Returns a data frame (tibble) containing columns with node ID,
+#' node identifier (name), number of properties associated with that
+#' node and a summary of the values for that node.
 #' @export
-`[.isatab` <- function(x, node, col=NULL, n=1) {
+isa_nodes <- function(x) {
+  stopifnot(is(x, "isatab"))
 
-  if(is.null(col)) {
-    col <- node
-  }
+  nodes <- which(x$isa_stru$is_node)
 
-  sel <- which(x$isa_stru$node_name == node & x$isa_stru$is_node)
+  ret <- x$isa_stru %>% group_by(.data[["node_id"]], .data[["node_name"]]) %>%
+    summarise(n_properties=n()) %>% ungroup() %>%
+    mutate(value_summary=unlist(lapply(x$contents[ , .data[["node_id"]]], .val_summary))) %>%
+    arrange(as.numeric(gsub("ID", "", .data[["node_id"]])))
 
-  if(length(sel) < 1) {
-    stop(glue('No such node: "{node}"'))
-  }
-
-  if(length(sel) > 1) {
-    message(glue("Showing {n} out of {length(sel)} [{sel[n]}]"))
-    sel <- sel[n]
-  }
-
-  node_id <- x$isa_stru$node_id[sel]
-  message(node_id)
-
-  sel <- which(x$isa_stru$node_id == node_id & x$isa_stru$col_name == col)
-
-  if(length(sel) < 1) {
-    stop(glue('No column "{col}" in node: "{node}"'))
-  }
-
-  x$contents[[sel]]
+  ret
 }
 
 
 #' Add sample rows to an isatab
 #'
 #' Add sample rows to an isatab
+#'
+#' Expand the isatab by adding rows. If `total` parameter is `TRUE`, the
+#' number of rows to be added will be such that the final number of rows is
+#' `n`. However, if `n` is smaller than current number of rows, no rows
+#' will be removed.
 #' @param x an isatab object
 #' @param n number of rows to add
+#' @param total if TRUE, the resulting isatab object will have `n` rows.
 #' @param replicate If true (default), the values in the last row of the isatabs will be replicated.
 #'        Otherwise, empty rows will be added.
-#' @return isatab with expanded rows
+#' @return An object of class isatab with expanded rows
 #' @importFrom tidyr uncount fill
 #' @export 
-isa_add_rows <- function(x, n, replicate=TRUE) {
+isa_rows_add <- function(x, n, total=FALSE, replicate=TRUE) {
 
   stopifnot(is(x, "isatab"))
+  stopifnot(n >= 0)
+
+  if(total) {
+    if(n < nrow(x$contents)) {
+      warning(glue("{n} < {nrow(x$contents)}. Cowardly refusing to remove rows."))
+      n <- 0
+    } else {
+      n <- n - nrow(x$contents) 
+    }
+  }
 
   cont <- x$contents
 
@@ -229,23 +174,41 @@ isa_add_rows <- function(x, n, replicate=TRUE) {
 
   cont <- uncount(cont, .data[[".nnn"]])
 
-  x$contents <- cont
+  x$contents <- as.colorDF(cont)
   x$n <- nrow(x$contents)
   x
 }
 
+## generate an ID which is not present in the x
+.new_id <- function(x, n=1) {
+  stopifnot(is(x, "isatab"))
 
-#' Insert a node to the isatab
+  ids <- as.numeric(gsub("ID", "", x$isa_stru$col_id))
+
+  ret <- (max(ids) + 1):(max(ids) + n)
+  ret <- paste0("ID", ret)
+  ret
+}
+
+
+#' Add or remove nodes and properties
 #' 
+#' Add or remove nodes and properties
+#'
+#' These functions manipulate the structure of an isatab. `isa_node_add`
+#' and `isa_node_rm` add or remove whole nodes. 
+#'
+#' To add or remove properties (individual columns which are not nodes) belonging to a given 
+#' node, use `isa_property_add` and `isa_property_rm`.
 #' @param x isatab object
 #' @param node new node identifier (e.g. "Sample Name")
 #' @param columns (optional) character vector with columns to add
-#' @param after ID of the node after which the current node should be
+#' @param after_node ID of the node after which the current node should be
 #'        inserted
-#' @param node_id character vector of node IDs to be removed
 #' @importFrom tibble tibble as_tibble
+#' @seealso isatab-class
 #' @export
-isa_node_add <- function(x, node, columns=NULL, after=NULL)  {
+isa_node_add <- function(x, node, columns=NULL, after_node=NULL)  {
 
   isa_stru <- x$isa_stru
   stopifnot(all(!duplicated(columns)))
@@ -253,21 +216,22 @@ isa_node_add <- function(x, node, columns=NULL, after=NULL)  {
   newcols <- c(node, columns)
   newnode <- as_tibble(matrix(NA, nrow=x$n, ncol=length(newcols)), .name_repair="unique")
 
-  newnode_id <- max(as.numeric(gsub("ID", "", isa_stru$node_id))) + 1
-  newnode_id <- paste0("ID", newnode_id)
+  newcol_ids <- .new_id(x, n=length(newcols))
+  newnode_id <- newcol_ids[1]
   message(glue("New ID {newnode_id}"))
 
   newnode_stru <- tibble(
                          col_name=newcols,
+                         col_id=newcol_ids,
                          is_node=c(TRUE, rep(FALSE, length(columns))),
                          node_name=rep(node, length(newcols)),
                          node_id=rep(newnode_id, length(newcols)))
 
   pos <- nrow(isa_stru)
 
-  if(!is.null(after)) {
-    stopifnot(after %in% isa_stru$node_id)
-    pos <- last(which(isa_stru$node_id == after))
+  if(!is.null(after_node)) {
+    stopifnot(after_node %in% isa_stru$node_id)
+    pos <- last(which(isa_stru$node_id == after_node))
   }
 
   newcont <- cbind(x$contents[, 1:pos], newnode)
@@ -281,6 +245,7 @@ isa_node_add <- function(x, node, columns=NULL, after=NULL)  {
 
   x$isa_stru <- newstru
   x$contents <- newcont
+  colnames(x$contents) <- x$isa_stru$col_id
 
   x
 
@@ -305,24 +270,148 @@ isa_node_rm <- function(x, node_id) {
   x
 }
 
-#' Find IDs of nodes 
+
+#' @param property Character vector with identifiers of the properties to be inserted
+#' @param node_id For `isa_node_rm`: character vector of node
+#' IDs to be removed.
+#' @param prop_node ID of the node in which to add the property (default:
+#' last node in the isatab).
+#' @param after_property ID of the property after which the parameter should
+#' be inserted (deault: last property)
+#' @param value vector (if only one property is added) or data frame (if
+#' multiple properties are added) of values used to initialize the node /
+#' parameter. If multiple properties are added with one call, and values is
+#' a data frame, than it has to have column names identical to the
+#' `properties` vector.
+#' @rdname isa_node_add
+#' @export
+isa_property_add <- function(x, property, value=NA, prop_node=NULL, after_property=NULL)  {
+  stopifnot(is(x, "isatab"))
+
+  if(length(property) > 1) {
+    stopifnot(is(value, "data.frame"))
+    stopifnot(all(names(value) %in% property))
+  } else {
+    stopifnot(is(value, "vector"))
+    value <- data.frame(value)
+    names(value) <- property
+  }
+
+  # add property after the last node
+  if(is.null(prop_node)) {
+    prop_node <- last(x$isa_stru$node_id)
+  }
+
+  stopifnot(prop_node %in% x$isa_stru$node_id)
+
+  node_sel <- which(x$isa_stru$node_id == prop_node)
+
+  # add property after the last property in node
+  if(is.null(after_property)) {
+    after_property <- last(x$isa_stru[ node_sel, "col_id" ])
+  }
+
+  stopifnot(after_property %in% x$isa_stru$col_id)
+
+  # name of the property 
+  node <- which(x$isa_stru$node_id == prop_node & x$isa_stru$is_node)
+  node_name <- x$isa_stru$node_name[node]
+
+  # exact position at which to insert the property/properties
+  pos <- which(x$isa_stru$col_id == after_property)
+
+  # generate new id(s) for the property
+  prop_ids <- .new_id(x, n=length(property))
+
+  ret <- x
+
+  new_prop <- tibble(
+                     col_name=property,
+                     col_id=prop_ids,
+                     is_node=FALSE,
+                     node_name=node_name,
+                     node_id=prop_node)
+
+  ret$isa_stru <- rbind(
+                        ret$isa_stru[1:pos, ],
+                        new_prop)
+  ## add remainder
+  if(pos < nrow(x$isa_stru)) {
+    ret$isa_stru <- rbind(ret$isa_stru,
+                          x$isa_stru[(pos + 1):nrow(x$isa_stru), ])
+  }
+
+  ret$isa_stru <- as_tibble(ret$isa_stru)
+
+  ret$contents <- cbind(x$contents[, 1:pos ], value)
+
+  ## add remainder
+  if(pos < ncol(x$contents)) {
+    ret$contents <- cbind(ret$contents, x$contents[ , (pos + 1):ncol(x$contents)])
+  }
+
+  ret$conents <- as_tibble(ret$contents)
+  ret$conents <- as.colorDF(ret$contents)
+  colnames(ret$contents) <- ret$isa_stru$col_id
+
+  ret$n <- nrow(ret$isa_stru)
+
+  attr(ret, "class") <- "isatab"
+
+  ret
+}
+
+#' @param prop_ids IDs of the properties to be removed
+#' @rdname isa_node_add
+#' @export
+isa_property_rm <- function(x, prop_ids) {
+
+  stopifnot(is(x, "isatab"))
+  stopifnot(all(prop_ids %in% x$isa_stru$col_id))
+
+  sel <- x$isa_stru$col_id %in% prop_ids 
+
+  x$isa_stru <- x$isa_stru[ !sel, ]
+  x$contents <- x$contents[ , !sel ]
+  x$n <- nrow(x$isa_stru)
+
+  x
+}
+
+
+#' Find IDs of nodes or properties  
 #'
-#' Find IDs of nodes fullfilling specified criteria
+#' Find IDs of nodes or properties fullfilling specified criteria
 #' @param x object of class isatab
 #' @param node_pattern return only nodes which match the given pattern
-#' @param values return only nodes which contain one of the values
-#' @param columns return only nodes which contain one of the columns
-#' @return Character vector of node IDs
+#' @param value_pattern return only nodes which match one of the values
+#' @param prop_pattern return only nodes which match one of the properties
+#' @return Character vector of IDs
 #' @examples
 #' \dontrun{
 #' isa_node_find(x, ".* Name", "alpha-N1-RNA1", "Parameter Value[Library Selection]")
 #' }
 #' @export
-isa_node_find <- function(x, node_pattern, values=NULL, columns=NULL) {
+isa_ID_find <- function(x, node_pattern=NULL, value_pattern=NULL, prop_pattern=NULL) {
 
+  stopifnot(is(x, "isatab"))
+  sel_node <- sel_prop <- sel_val <- TRUE
 
+  if(!is.null(node_pattern)) {
+    sel_node <- grepl(node_pattern, x$isa_stru$node_name) & x$isa_stru$is_node
+  }
 
+  if(!is.null(prop_pattern)) {
+    sel_prop <- grepl(prop_pattern, x$isa_stru$col_name) & !x$isa_stru$is_node
+  }
 
+  if(!is.null(value_pattern)) {
+    sel_val  <- apply(x$contents, function(xx) {
+      any(grepl(value_pattern, xx))
+    })
+  }
+
+  x$isa_stru$col_id[ sel_node & sel_prop & sel_val ]
 
 }
 
