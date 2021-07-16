@@ -25,15 +25,14 @@ an object of class \code{isa_i} (for investigation files).
 Read or write an isatab file
 }
 \examples{
-\dontrun{
-isa_i <- read_isa("i_Investigation.txt")
+file <- system.file("extdata", "i_Investigation.txt", package="isaeditor")
+isa_i <- read_isa(file)
 print(isa_i)
 
-isa_a <- #' read_isa("a_isatab_transcriptome_profiling_nucleotide_sequencing.txt")
-print(isa_a)
-summary(isa_a)
+file <- system.file("extdata", "s_isatab.txt", package="isaeditor")
+isa_s <- read_isa(file)
+print(isa_s)
 
-}
 }
 \seealso{
 \code{\linkS4class{isatab}}

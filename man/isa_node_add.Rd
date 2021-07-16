@@ -11,15 +11,9 @@ isa_node_add(x, node, columns = NULL, after_node = NULL)
 
 isa_node_rm(x, node_id)
 
-isa_property_add(
-  x,
-  property,
-  value = NA,
-  prop_node = NULL,
-  after_property = NULL
-)
+isa_property_add(x, property, values = NA, node_id = NULL, after_id = NULL)
 
-isa_property_rm(x, prop_ids)
+isa_property_rm(x, prop_ids = NULL)
 }
 \arguments{
 \item{x}{isatab object}
@@ -31,21 +25,19 @@ isa_property_rm(x, prop_ids)
 \item{after_node}{ID of the node after which the current node should be
 inserted}
 
-\item{node_id}{For \code{isa_node_rm}: character vector of node
-IDs to be removed.}
-
-\item{property}{Character vector with identifiers of the properties to be inserted}
-
-\item{value}{vector (if only one property is added) or data frame (if
-multiple properties are added) of values used to initialize the node /
-parameter. If multiple properties are added with one call, and values is
-a data frame, than it has to have column names identical to the
-\code{properties} vector.}
-
-\item{prop_node}{ID of the node in which to add the property (default:
+\item{node_id}{ID of the node in which to add the property (default:
 last node in the isatab).}
 
-\item{after_property}{ID of the property after which the parameter should
+\item{property}{Character vector with identifiers (such as "Comment[Important]") of the properties to be inserted}
+
+\item{values}{vector (if only one property is added) or data frame (if
+multiple properties are added) of values used to initialize the node /
+parameter. If multiple properties are added with one call (the length of
+the \code{property} vector is greater than one), and values is
+a data frame, than it has to have sufficient number of columns
+corresponding to the \code{property} vector.}
+
+\item{after_id}{ID of the property after which the parameter should
 be inserted (deault: last property)}
 
 \item{prop_ids}{IDs of the properties to be removed}
@@ -59,7 +51,19 @@ and \code{isa_node_rm} add or remove whole nodes.
 
 To add or remove properties (individual columns which are not nodes) belonging to a given
 node, use \code{isa_property_add} and \code{isa_property_rm}.
+
+Note: IDs are a thing internal to this R package. They are not imported
+from or exported to actual ISA-tab files. However, given that the node
+"identifiers" (e.g. "Sample Name") can be ambiguous, IDs are necessary
+to unambiguously identify a node.
+}
+\examples{
+file <- system.file("extdata", "s_isatab.txt", package="isaeditor")
+isa_s <- read_isa(file)
+isa_s <- isa_node_add(isa_s, "Library Name", columns="Comment[Raw File]")
+isa_nodes(isa_s)
+isa_s <- isa_property_add(isa_s, "Characteristics[Age]", values=c(75, 38, 43), node_id="ID1")
 }
 \seealso{
-isatab-class
+\code{\linkS4class{isatab}}
 }

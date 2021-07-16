@@ -17,6 +17,19 @@ node and a summary of the values for that node.
 \description{
 Show nodes in an isatab
 }
+\details{
+Note: IDs are a thing internal to this R package. They are not imported
+from or exported to actual ISA-tab files. However, given that the node
+"identifiers" (e.g. "Sample Name") can be ambiguous, IDs are necessary
+to unambiguously identify a node.
+}
+\examples{
+file <- system.file("extdata", "s_isatab.txt", package="isaeditor")
+isa_s <- read_isa(file)
+isa_nodes(isa_s)
+}
 \seealso{
 \code{\linkS4class{isatab}}
+
+\code{\linkS4class{isatab}}, \code{\link[=isa_properties]{isa_properties()}}
 }

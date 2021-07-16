@@ -5,6 +5,7 @@
 \alias{print.isatab}
 \alias{as.data.frame.isatab}
 \alias{as_tibble.isatab}
+\alias{n_row.isatab}
 \alias{summary.isatab}
 \alias{[<-.isatab}
 \alias{[.isatab}
@@ -18,11 +19,13 @@
 
 \method{as_tibble}{isatab}(x, ...)
 
+\method{n_row}{isatab}(x)
+
 \method{summary}{isatab}(object, ...)
 
-\method{[}{isatab}(x, node, col = NULL, n = 1) <- value
+\method{[}{isatab}(x, node, property = NULL, new = FALSE, n = NA, after_id = NULL) <- value
 
-\method{[}{isatab}(x, node, col = NULL, n = 1)
+\method{[}{isatab}(x, node, property = NULL, n = NA)
 
 \method{[[}{isatab}(x, col_id) <- value
 
@@ -35,14 +38,23 @@
 
 \item{object}{object of class isatab}
 
-\item{node}{node identifier (e.g. "Sample Name")}
+\item{node}{node column (e.g. "Sample Name")}
 
-\item{col}{column identifier (e.g. "Performer")}
+\item{property}{property column (e.g. "Performer")}
 
-\item{n}{instance of the matching node/column pairs}
+\item{new}{force creating a new node even if there is already a node
+with such an identifier}
 
-\item{value}{vector with values which will be inserted into the isatab
-at the specified column}
+\item{n}{instance of the node identifier (if there are multiple
+identical node identifiers in the isatab, for example multiple "Extract
+Name" nodes).}
+
+\item{after_id}{ID of an existing column. If a column (node or property) needs to be created,
+after_id can be used to specify after which node / column the new column
+will be inserted.}
+
+\item{value}{vector or data frame with values which will be inserted into the isatab
+at the specified column.}
 
 \item{col_id}{Column ID (e.g. "ID34")}
 }
@@ -56,32 +68,84 @@ Objects of this class are generated usually by reading a file with
 Internally, it is a list containing as elements a data frame (tibble)
 describing the structure of the isa tab (\code{isa_stru}) and a data frame
 (tibble) containing the actual data.
-\subsection{Accessing columns of an isa tab}{
+\subsection{Terminology}{
+
+ISA-tab \emph{nodes} (such as "Source Name", "Sample Name", "Protocol REF",
+"Extract Name" or "Library Name") can have \emph{properties}. Both are represented as
+\emph{columns}. In the ISA-tab specificiation, node designators such as
+"Sample Name" are called \emph{identifiers}, although they need not be unique.
+IDs are internal identifiers of the package \code{isaeditor}; they are unique
+to a column. Some functions in \code{isaeditor} can access ISA-tab columns
+using node / property combination; some other require the internal ID.
+}
+
+\subsection{Accessing columns (nodes and properties) of an isa tab}{
+
+Note: IDs are a thing internal to this R package. They are not imported
+from or exported to actual ISA-tab files. However, given that the node
+"identifiers" (e.g. "Sample Name") can be ambiguous, IDs are necessary
+to unambiguously identify a node.
 
 There are two ways of accessing a column: by using the \code{[} function to
 select a node identifier
-(e.g. "Protocol REF") and, optionally, a parameter identifier (e.g.
+(e.g. "Protocol REF") and, optionally, a property identifier (e.g.
 "Performer"), or by using the \code{[[} function to select column IDs. The former has the disadvantage that
-multiple identical node / parameter identifier combinations may exist,
-and it may be necessary to specify which node is meant:\preformatted{isa_s <- read_isa("s_isatab.txt")
-isa_s[ "Sample Name" ]
-isa_s[ "Protocol REF", "Performer" ]
+multiple identical node / property identifier combinations may exist,
+and it may be necessary to specify which node is meant:\preformatted{isa_a <- read_isa("a_isatab.txt")
+isa_a[ "Sample Name" ]
+isa_a[ "Protocol REF", "Performer" ]
 ## 3rd instance of the combination Protocol REF / Performer
-isa_s[ "Protocol REF", "Performer", 3 ]
-isa_s[ "Protocol REF", "Performer", 3 ] <- "Rosalind Franklin"
+isa_a[ "Protocol REF", "Performer", n=3 ]
+isa_a[ "Protocol REF", "Performer", n=3 ] <- "Rosalind Franklin"
 }
 
-The latter (column IDs) is not ambiguous, but column IDs are a trick
+Assigning a NULL value to a selected node is equivalent to removing this
+node and all its properties.
+
+Assigning a NULL value to a property is equivalent with removing this
+property.
+
+Using column IDs with the \code{[[} function is not ambiguous, but column IDs are a trick
 used by the package \code{isaeditor} and are not exported or read from an
 actual ISA-tab. To view the column IDs, simply print the isatab object to the
 screen or inspect the \code{isa_stru} element of the object:\preformatted{isa_s <- read_isa("s_isatab.txt")
 isa_s
 isa_s$isa_stru
-isa_s[["ID34"]]
-isa_s[["ID34"]] <- "Rosalind Franklin"
+isa_s[["ID21"]]
+isa_s[["ID21"]] <- "Rosalind Franklin"
+}
+
+Both \code{[} and \code{[[} return a vector if a single column is specified and a data
+frame if more than one column is selected.
+}
+
+\subsection{Creating and removing nodes and properties}{
+
+Nodes and properties can either be created with \code{\link[=isa_node_add]{isa_node_add()}} and
+\code{\link[=isa_property_add]{isa_property_add()}} or with assigning a value to a new node with \verb{[<-}:\preformatted{isa_a["Test Node"] <- c(1, 2, 3)
+isa_a["Test Node", "Test Property"] <- 5:7
+}
+
+In the above code, first the node \verb{Test Node} was created and filled
+with values 1:3, and then the property \verb{Test Property} was created and
+filled with 5:7. This can be shortened by assigning a data frame in one
+step:\preformatted{isa_a["Test Node", "Test Property"] <- data.frame(1:3, 5:7)
+}
+
+A column ID can be specified to insert the node at a position relative
+to another node, or the property at a position relative to another
+property:\preformatted{isa_a[ "Test Node", after_id="ID1" ] <- 1:3
+}
+
+Removing nodes and properties works by assigning \code{NULL} to either a node
+(in which case all node properties will be removed as well) or a
+property.\preformatted{# remove only one property
+isa_a["Test Node", "Test Property"] <- NULL
+# remove node and its properties
+isa_a["Test Node"] <- NULL
 }
 }
 }
 \seealso{
-\link{read_isa}
+\code{\link[=read_isa]{read_isa()}} \code{\link[=isa_ID_find]{isa_ID_find()}}
 }

@@ -9,25 +9,46 @@
 #' describing the structure of the isa tab (`isa_stru`) and a data frame
 #' (tibble) containing the actual data.
 #'
-#' ## Accessing columns of an isa tab
+#' ## Terminology
+#'
+#' ISA-tab *nodes* (such as "Source Name", "Sample Name", "Protocol REF",
+#' "Extract Name" or "Library Name") can have *properties*. Both are represented as
+#' *columns*. In the ISA-tab specificiation, node designators such as
+#' "Sample Name" are called *identifiers*, although they need not be unique.
+#' IDs are internal identifiers of the package `isaeditor`; they are unique
+#' to a column. Some functions in `isaeditor` can access ISA-tab columns
+#' using node / property combination; some other require the internal ID.
+#'
+#' ## Accessing columns (nodes and properties) of an isa tab
+#'
+#' Note: IDs are a thing internal to this R package. They are not imported
+#' from or exported to actual ISA-tab files. However, given that the node
+#' "identifiers" (e.g. "Sample Name") can be ambiguous, IDs are necessary
+#' to unambiguously identify a node.
 #'
 #' There are two ways of accessing a column: by using the `[` function to
 #' select a node identifier
-#' (e.g. "Protocol REF") and, optionally, a parameter identifier (e.g.
+#' (e.g. "Protocol REF") and, optionally, a property identifier (e.g.
 #' "Performer"), or by using the `[[` function to select column IDs. The former has the disadvantage that
-#' multiple identical node / parameter identifier combinations may exist,
+#' multiple identical node / property identifier combinations may exist,
 #' and it may be necessary to specify which node is meant:
 #'
 #' ```
-#' isa_s <- read_isa("s_isatab.txt")
-#' isa_s[ "Sample Name" ]
-#' isa_s[ "Protocol REF", "Performer" ]
+#' isa_a <- read_isa("a_isatab.txt")
+#' isa_a[ "Sample Name" ]
+#' isa_a[ "Protocol REF", "Performer" ]
 #' ## 3rd instance of the combination Protocol REF / Performer
-#' isa_s[ "Protocol REF", "Performer", 3 ]
-#' isa_s[ "Protocol REF", "Performer", 3 ] <- "Rosalind Franklin"
+#' isa_a[ "Protocol REF", "Performer", n=3 ]
+#' isa_a[ "Protocol REF", "Performer", n=3 ] <- "Rosalind Franklin"
 #' ```
+#' 
+#' Assigning a NULL value to a selected node is equivalent to removing this
+#' node and all its properties.
 #'
-#' The latter (column IDs) is not ambiguous, but column IDs are a trick
+#' Assigning a NULL value to a property is equivalent with removing this
+#' property.
+#'
+#' Using column IDs with the `[[` function is not ambiguous, but column IDs are a trick
 #' used by the package `isaeditor` and are not exported or read from an
 #' actual ISA-tab. To view the column IDs, simply print the isatab object to the
 #' screen or inspect the `isa_stru` element of the object:
@@ -36,10 +57,51 @@
 #' isa_s <- read_isa("s_isatab.txt")
 #' isa_s
 #' isa_s$isa_stru
-#' isa_s[["ID34"]]
-#' isa_s[["ID34"]] <- "Rosalind Franklin"
+#' isa_s[["ID21"]]
+#' isa_s[["ID21"]] <- "Rosalind Franklin"
 #' ```
-#' @seealso [read_isa]
+#'
+#' Both `[` and `[[` return a vector if a single column is specified and a data
+#' frame if more than one column is selected.
+#'
+#' ## Creating and removing nodes and properties
+#'
+#' Nodes and properties can either be created with [isa_node_add()] and
+#' [isa_property_add()] or with assigning a value to a new node with `[<-`:
+#'
+#' ```
+#' isa_a["Test Node"] <- c(1, 2, 3)
+#' isa_a["Test Node", "Test Property"] <- 5:7
+#' ```
+#'
+#' In the above code, first the node `Test Node` was created and filled
+#' with values 1:3, and then the property `Test Property` was created and
+#' filled with 5:7. This can be shortened by assigning a data frame in one
+#' step:
+#'
+#' ```
+#' isa_a["Test Node", "Test Property"] <- data.frame(1:3, 5:7)
+#' ```
+#'
+#' A column ID can be specified to insert the node at a position relative
+#' to another node, or the property at a position relative to another
+#' property:
+#'
+#' ```
+#' isa_a[ "Test Node", after_id="ID1" ] <- 1:3
+#' ```
+#'
+#' Removing nodes and properties works by assigning `NULL` to either a node
+#' (in which case all node properties will be removed as well) or a
+#' property.
+#'
+#' ```
+#' # remove only one property
+#' isa_a["Test Node", "Test Property"] <- NULL
+#' # remove node and its properties
+#' isa_a["Test Node"] <- NULL
+#' ```
+#' @seealso [read_isa()] [isa_ID_find()]
 #' @name isatab-class
 NULL
 
@@ -50,6 +112,7 @@ NULL
 print.isatab <- function(x, ...) {
 
   tmp <- x$contents
+  tmp <- as.colorDF(tmp)
   colnames(tmp) <- sprintf("%s [%s]", x$isa_stru[["col_name"]], x$isa_stru[["col_id"]])
 
   df_style(tmp, "type.styles") <- c(df_style(tmp), list(node=list(fg="red", bg="white")))
@@ -78,23 +141,28 @@ as_tibble.isatab <- function(x, ...) {
 
 }
 
-## provide a summary of values
-.val_summary <- function(x) {
-  if(all(is.na(x))) {
-    return("All missing")
-  }
+#' Generic replacement for `nrow()`
+#'
+#' Generic replacement for `nrow()`
+#' @param x an array-like object
+#' @export
+n_row <- function(x) {
+  UseMethod("n_row", x)
+}
 
-  n_uniq <- length(unique(x))
-  if(n_uniq == 1) {
-    return(glue("One value: {x[1]}"))
-  }
 
-  if(n_uniq == length(x)) {
-    return(glue("All unique; {x[1]}..."))
-  }
 
-  n <- length(unique(x))
-  glue("{n} unique: {x[1]}...")
+#' @export
+n_row.default <- function(x) {
+  nrow(x)
+}
+
+#' @rdname isatab-class
+#' @export
+n_row.isatab <- function(x) {
+  stopifnot(is(x, "isatab"))
+  
+  x$n
 }
 
 
@@ -142,82 +210,203 @@ summary.isatab <- function(object, ...) {
   }
 }
 
-
-#' @param value vector with values which will be inserted into the isatab
-#'        at the specified column 
-#' @param node node identifier (e.g. "Sample Name")
-#' @param col column identifier (e.g. "Performer")
-#' @param n instance of the matching node/column pairs
+#' @param value vector or data frame with values which will be inserted into the isatab
+#'        at the specified column. 
+#' @param node node column (e.g. "Sample Name")
+#' @param new force creating a new node even if there is already a node
+#'        with such an identifier
+#' @param property property column (e.g. "Performer")
+#' @param n instance of the node identifier (if there are multiple
+#' identical node identifiers in the isatab, for example multiple "Extract
+#' Name" nodes).
+#' @param after_id ID of an existing column. If a column (node or property) needs to be created,
+#' after_id can be used to specify after which node / column the new column
+#' will be inserted.
 #' @rdname isatab-class
 #' @export
-`[<-.isatab` <- function(x, node, col=NULL, n=1, value) {
+`[<-.isatab` <- function(x, node, property=NULL, new=FALSE, n=NA, after_id=NULL, value) {
 
   stopifnot(is(x, "isatab"))
+  ## first, find the node_id
+  sel <- x$isa_stru$is_node & x$isa_stru$node_name == node
 
-  if(is.null(col)) {
-    col <- node
-  }
-
-  if(!node %in% x$isa_stru$node_name) {
-    stop(glue('No such node: "{node}"'))
-  }
-
-  sel <- which(x$isa_stru$node_name == node & x$isa_stru$col_name == col)
-
-  if(length(sel) < 1) {
-    stop(glue("No column {col} in node {node}"))
-  }
-
-  tot_n <- length(sel)
-  if(tot_n > 1) {
-    if(n > length(sel)) {
-      n <- length(sel)
+  if(new || !any(sel)) {
+    ## NULL nodes are to be deleted, so just return the object
+    if(is.null(value)) {
+      return(x)
     }
-    sel <- sel[n]
+    # create a new node
+    # but after which node?
+    if(is.null(after_id)) {
+      after_id <- last(x$isa_stru$node_id)
+    } else {
+      after_id <- x$isa_stru$node_id[ x$isa_stru$col_id == after_id ]
+    }
+    after_name <- .col_id_to_name(x, after_id)
+    message(glue("Adding node {node} after node {after_name} [{after_id}]"))
+
+    # the internal version gives us the new node id
+    tmp <- .isa_node_add(x, node, after_node=after_id)
+    x <- tmp$x
+    node_id <- tmp$node_id
+
+    if(is(value, "data.frame")) {
+      .val <- value[[1]]
+      value[[1]] <- NULL
+    } else {
+      .val <- value
+    }
+    
+    ## populate the new node with values
+    stopifnot(!is.null(.val))
+    x[[node_id]] <- .val
+
+    after_id <- node_id
+
+  } else { 
+    ## selecting an existing node
+    if(sum(sel) > 1) {
+      if(is.na(n)) {
+        stop(glue("Node name {node} is ambiguous (there are {sum(sel)} nodes called {node}).\nPlease use `[[ID]]` or the `n` parameter."))
+      } else {
+        if(n > sum(sel)) {
+          n <- sum(sel)
+        }
+        sel <- which(sel)[n]
+        message(glue("Selecting node {node} [{x$isa_stru$node_id[sel]}], {n} out of {sum(sel)}"))
+      }
+    }
+
+    node_id <- x$isa_stru$node_id[sel]
+
+    if(is.null(property) && !is.null(value)) {
+      message(glue("Modyfying node {node} [{node_id}]"))
+      if(is(value, "list")) {
+        .val <- value[[1]]
+        value[[1]] <- NULL
+      } else {
+        .val <- value
+      }
+    
+      ## populate the new node with values
+      stopifnot(!is.null(.val))
+      x[[node_id]] <- .val
+    }
   }
 
-  col_id <- x$isa_stru$col_id[sel]
 
-  message(glue("Replacing values in node {node}, column {col}, instance {n}/{tot_n} ({col_id})"))
+  if(is.null(property) && is.null(value)) {
+    message(glue("Removing node {node} [{node_id}]"))
+    x <- isa_node_rm(x, node_id)
+  }
 
-  x$contents[[col_id]] <- value
-  x
+  node_df <- x$isa_stru[ x$isa_stru$node_id == node_id, ]
+
+  if(!is.null(property) && is.null(value)) {
+    pp <- paste(property, collapse=", ")
+    message(glue("Removing properties '{pp}' from node '{node}' [{node_id}]"))
+    for(prop in property) {
+      if(!prop %in% node_df$col_name) {
+        message(glue("Property '{prop}' does not exist, skipping"))
+      } else {
+        message(glue("Removing property '{prop}' from node '{node}' [{node_id}]"))
+        .col_id <- x$isa_stru$col_id[ match(prop, x$isa_stru$col_name) ]
+        x <- isa_property_rm(x, .col_id)
+      }
+    }
+  }
+
+  if(!is.null(property) && !is.null(value)) {
+    if(!is.null(after_id) && !after_id %in% x$isa_stru$col_id[ x$isa_stru$col_id == node_id ]) {
+      stop(glue("after_id=[{after_id}] is not a property of node '{node}' [{node_id}]"))
+    }
+
+    pp <- paste(property, collapse=", ")
+    message(glue("Modifying / creating properties '{pp}'..."))
+
+    # isa_stru of the node_id only
+
+    for(prop in property) {
+      if(!prop %in% node_df$col_name) {
+        if(is.null(after_id)) {
+          after_id <- last(node_df$col_id)
+        }
+        stopifnot(after_id %in% node_df$col_id)
+        message(glue("Creating property {prop} for node {node} [{node_id}] after column [{after_id}]"))
+        if(is(value, "data.frame")) {
+          stopifnot(length(value) > 0)
+          .val <- value[[1]]
+          value[[1]] <- NULL
+        } else {
+          .val <- value
+        }
+        tmp <- .isa_property_add(x, prop, .val, node_id=node_id, after_id=after_id)
+        x <- tmp$x
+        after_id <- tmp$id
+        stopifnot(length(after_id) == 1)
+        node_df <- x$isa_stru[ x$isa_stru$node_id == node_id, ]
+      } else {
+        message(glue("Modyfying property {prop} for node {node} [{node_id}]"))
+        .col_id <- x$isa_stru$col_id[ match(prop, x$isa_stru$col_name) ]
+        if(is(value, "data.frame")) {
+          .val <- value[[1]]
+          value[[1]] <- NULL
+        } else {
+          .val <- value
+        }
+        stopifnot(!is.null(.val))
+        x[[.col_id]] <- .val
+      }
+
+    }
+
+  }
+
+  .check_integrity(x)
 }
 
 
 #' @rdname isatab-class
 #' @export
-`[.isatab` <- function(x, node, col=NULL, n=1) {
+`[.isatab` <- function(x, node, property=NULL, n=NA) {
 
   stopifnot(is(x, "isatab"))
-
-  if(is.null(col)) {
-    col <- node
-  }
 
   if(!node %in% x$isa_stru$node_name) {
     stop(glue('No such node: "{node}"'))
   }
 
-  sel <- which(x$isa_stru$node_name == node & x$isa_stru$col_name == col)
-
-  if(length(sel) < 1) {
-    stop(glue("No column {col} in node {node}"))
+  if(is.null(property)) {
+    property <- node
   }
 
-  tot_n <- length(sel)
-  if(tot_n > 1) {
-    if(n > length(sel)) {
-      n <- length(sel)
+  sel <- x$isa_stru$is_node & x$isa_stru$node_name == node
+
+  if(sum(sel) > 1L) {
+    if(is.na(n)) {
+      stop(glue("Node name {node} is ambiguous (there are {sum(sel)} nodes called {node}).\nPlease use `[[ID]]` or the `n` parameter."))
+    } 
+    if(n > sum(sel)) {
+      n <- sum(sel)
     }
-    sel <- sel[n]
+    sel <- which(sel)[n]
   }
 
-  col_id <- x$isa_stru$col_id[sel]
+  node_id <- x$isa_stru$node_id[sel]
+  node_df <- x$isa_stru[ x$isa_stru$node_id == node_id, ]
+    
+  if(!all(property %in% node_df$col_name)) {
+    miss <- property[ !property %in% node_df$col_name ]
+    stop(glue("Properties not in node '{node}' [{node_id}]:\n{paste(miss, collapse='; ')}"))
+  }
 
-  message(glue("Showing values in node {node}, column {col}, instance {n}/{tot_n} ({col_id})"))
+  prop_ids <- node_df$col_id[ match(property, node_df$col_name) ]
 
-  x$contents[[col_id]]
+  ret <- x[[prop_ids]]
+  if(is(ret, "data.frame")) {
+    colnames(ret) <- property
+  }
+  ret
 }
 
 #' @param col_id Column ID (e.g. "ID34")
@@ -237,8 +426,16 @@ summary.isatab <- function(object, ...) {
 #' @export
 `[[.isatab` <- function(x, col_id) {
 
-  stopifnot(col_id %in% x$isa_stru[["col_id"]])
+  stopifnot(length(col_id) > 0)
+  stopifnot(all(col_id %in% x$isa_stru[["col_id"]]))
   sel <- match(col_id, x$isa_stru[["col_id"]])
 
-  x$contents[[sel]]
+  if(length(sel) > 1) {
+    return(x$contents[ , col_id ])
+  } else {
+    return(x$contents[[col_id]])
+  }
 }
+
+
+

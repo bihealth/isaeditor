@@ -28,3 +28,12 @@ number of rows to be added will be such that the final number of rows is
 \code{n}. However, if \code{n} is smaller than current number of rows, no rows
 will be removed.
 }
+\examples{
+file <- system.file("extdata", "s_isatab.txt", package="isaeditor")
+isa_s <- read_isa(file)
+isa_new <- isa_rows_add(isa_s, 10, total=TRUE)
+n_row(isa_new)
+}
+\seealso{
+\code{\linkS4class{isatab}}
+}
