@@ -3,16 +3,26 @@
 \name{node_list}
 \alias{node_list}
 \alias{node_show}
+\alias{node_select}
+\alias{prop_select}
 \title{Lists all the nodes in an isatab object}
 \usage{
 node_list(x)
 
 node_show(x, node_id)
+
+node_select(x, node_id, inverse = FALSE)
+
+prop_select(x, prop_id, inverse = FALSE)
 }
 \arguments{
 \item{x}{object of class isatab}
 
 \item{node_id}{ID of a node to show}
+
+\item{inverse}{if TRUE, inverses the selection}
+
+\item{prop_id}{property IDs to be selected}
 }
 \value{
 a data.frame like object
@@ -28,6 +38,12 @@ values for that node.
 \code{node_show} returns a data frame for a given \code{node_id} listing all
 properties associated with that node and a summary of values for each of
 the properties.
+
+\code{node_select} returns a new object of class isatab containing only the
+selected nodes.
+
+\code{prop_select} returns a new object of class isatab containing only the
+selected property IDs (which may not be node IDs!).
 }
 \examples{
 file <- system.file("extdata", "s_isatab.txt", package="isaeditor")

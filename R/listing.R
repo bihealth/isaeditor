@@ -37,6 +37,7 @@ node_list <- function(x) {
 
 #' @param node_id ID of a node to show
 #' @importFrom dplyr select
+#' @importFrom dplyr all_of
 #' @rdname node_list
 #' @export
 node_show <- function(x, node_id) {
@@ -72,7 +73,7 @@ node_select <- function(x, node_id, inverse=FALSE) {
 
 #' @param prop_id property IDs to be selected
 #' @param inverse if TRUE, inverses the selection
-#' @rdname node_lis
+#' @rdname node_list
 #' @export
 prop_select <- function(x, prop_id, inverse=FALSE) {
   stopifnot(is(x, "isatab"))
