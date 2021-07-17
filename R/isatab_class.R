@@ -211,7 +211,7 @@ summary.isatab <- function(object, ...) {
 }
 
 ## remove selected properties – helper function for [<-
-.props_remove <- function(x, property, node_id) {
+.props_remove <- function(x, property, node, node_id) {
   
   node_df <- x$isa_stru[ x$isa_stru$node_id == node_id, ]
   pp <- paste(property, collapse=", ")
@@ -231,7 +231,7 @@ summary.isatab <- function(object, ...) {
 
 ## fill selected props of node node_id with values
 ## helper function for [<-
-.props_modify <- function(x, property, node_id, after_id, value) {
+.props_modify <- function(x, property, node, node_id, after_id, value) {
   # isa_stru of the node_id only
   node_df <- x$isa_stru[ x$isa_stru$node_id == node_id, ]
 
@@ -388,7 +388,7 @@ summary.isatab <- function(object, ...) {
 
 
   if(!is.null(property) && is.null(value)) {
-    x <- .props_remove(x, property, node_id)
+    x <- .props_remove(x, property, node, node_id)
   }
 
   if(!is.null(property) && !is.null(value)) {
@@ -399,7 +399,7 @@ summary.isatab <- function(object, ...) {
     pp <- paste(property, collapse=", ")
     message(glue("Modifying / creating properties '{pp}'..."))
 
-    x <- .props_modify(x, property, node_id, after_id, value)
+    x <- .props_modify(x, property, node, node_id, after_id, value)
   }
 
   .check_integrity(x)
