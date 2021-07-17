@@ -295,7 +295,7 @@ summary.isatab <- function(object, ...) {
   c(tmp2, list(node_id=node_id))
 }
 
-## helper function for [<-
+## helper function for [<- and [[<-
 ## inserts value into a column, *using up* columns if it is a data frame
 .col_insert_value <- function(x, col_id, value) {
 
@@ -449,17 +449,39 @@ summary.isatab <- function(object, ...) {
   ret
 }
 
+## return only node ids from col_id
+.filter_nodes <- function(x, col_id) {
+  cid <- col_id
+  x$isa_stru$col_id[ 
+    x$isa_stru$col_id %in% cid & x$isa_stru$is_node ]
+}
+
+## return only property ids from col_id
+.filter_props <- function(x, col_id) {
+  cid <- col_id
+  x$isa_stru$col_id[ 
+    x$isa_stru$col_id %in% cid & !x$isa_stru$is_node ]
+
+}
+
 #' @param col_id Column ID (e.g. "ID34")
 #' @rdname isatab-class
 #' @export
 `[[<-.isatab` <- function(x, col_id, value) {
   stopifnot(is(x, "isatab"))
-  stopifnot(col_id %in% x$isa_stru[["col_id"]])
-  sel <- which(x$isa_stru[["col_id"]] == col_id)
-  message(glue("Replacing values in node {x$isa_stru$node_name[sel]}, column {x$isa_stru$col_name[sel]}"))
+  stopifnot(all(col_id %in% x$isa_stru[["col_id"]]))
 
-  x$contents[[col_id]] <- value
-  x
+  if(is.null(value)) {
+    ## removing col_id / node
+    cid <- col_id
+    x$isa_stru <- x$isa_stru %>%
+      filter(!.data[["node_id"]] %in% cid) %>%
+      filter(!.data[["col_id"]] %in% cid)
+    x$contents <- x$contents[ , x$isa_stru$col_id ]
+  } else {
+    x$contents[, col_id] <- value
+  }
+  .check_integrity(x)
 }
 
 #' @rdname isatab-class

@@ -317,6 +317,7 @@ isa_node_add <- function(x, node, columns=NULL, after_node=NULL)  {
 isa_node_rm <- function(x, node_id) {
 
   stopifnot(is(x, "isatab"))
+  stopifnot(length(node_id) > 0)
 
   if(!all(node_id %in% x$isa_stru$node_id)) {
     miss <- node_id[ ! node_id %in% x$isa_stru$node_id ]
@@ -441,6 +442,7 @@ isa_property_rm <- function(x, prop_ids=NULL) {
   stopifnot(all(prop_ids %in% x$isa_stru$col_id))
 
   sel <- x$isa_stru$col_id %in% prop_ids 
+  stopifnot(all(!x$isa_stru$is_node[ sel ]))
 
   x$isa_stru <- x$isa_stru[ !sel, ]
   x$contents <- x$contents[ , !sel ]

@@ -1,7 +1,9 @@
 test_that("`[[` works", {
-  expect_equal(isa_s[["ID1"]], c("alpha", "beta", "gamma"))
-  expect_equal(isa_s[["ID1"]], isa_s$contents[["ID1"]])
-  expect_error(isa_s[["XXX"]])
+  x <- isa_s
+  expect_equal(x[["ID1"]], c("alpha", "beta", "gamma"))
+  expect_equal(x[["ID1"]], x$contents[["ID1"]])
+  expect_error(x[["XXX"]])
+  expect_s3_class(x[[c("ID1", "ID3")]], "data.frame")
 })
 
 
@@ -9,13 +11,32 @@ test_that("`[[<-` works", {
 
   x <- isa_s
   x[["ID1"]] <- 1:3
-
   expect_equal(x[["ID1"]], 1:3)
   expect_equal(x$contents[["ID1"]], 1:3)
   expect_error(x[["XXX"]] <- 1:3)
-  expect_s3_class(x[[c("ID1", "ID3")]], "data.frame")
-
   check_integrity(x)
+
+  x <- isa_s
+  x[[c("ID2", "ID3")]] <- 99
+  check_integrity(x)
+  expect_equal(x$contents$ID2, rep(99, 3))
+  expect_equal(x$contents$ID3, rep(99, 3))
+
+  x <- isa_s
+  x[[c("ID2", "ID3")]] <- data.frame(1:3, 5:7)
+  check_integrity(x)
+  expect_equal(x$contents$ID2, 1:3)
+  expect_equal(x$contents$ID3, 5:7)
+
+  x[["ID2"]] <- NULL
+  check_integrity(x)
+  expect_false("ID2" %in% x$isa_stru$col_id)
+
+  x <- isa_s
+  x[[c("ID1", "ID2")]] <- NULL
+  check_integrity(x)
+  expect_false("ID3" %in% x$isa_stru$col_id)
+  expect_false("ID1" %in% x$isa_stru$node_id)
 })
 
 

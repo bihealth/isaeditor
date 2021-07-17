@@ -52,6 +52,9 @@ and \code{isa_node_rm} add or remove whole nodes.
 To add or remove properties (individual columns which are not nodes) belonging to a given
 node, use \code{isa_property_add} and \code{isa_property_rm}.
 
+Adding and removing nodes is easier using brackets / subscripts. Read
+the documentation for \code{\linkS4class{isatab}} for details.
+
 Note: IDs are a thing internal to this R package. They are not imported
 from or exported to actual ISA-tab files. However, given that the node
 "identifiers" (e.g. "Sample Name") can be ambiguous, IDs are necessary
