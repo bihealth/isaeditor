@@ -1,17 +1,3 @@
-
-file <- system.file("extdata", "s_isatab.txt", package="isaeditor")
-isa_s <- read_isa(file)
-
-check_integrity <- function(object) {
-
-  expect_equal(nrow(object$contents), object$n)
-  expect_true(all(object$node_id %in% object$col_id))
-  expect_equal(length(unique(object$node_id)), sum(object$is_node))
-  expect_equal(ncol(object$contents), nrow(object$isa_stru))
-  expect_equal(colnames(object$contents), object$isa_stru$col_id)
-
-}
-
 test_that("Reading ISA tab study file works", {
 
   expect_equal(n_row(isa_s), 3)

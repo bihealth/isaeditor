@@ -1,22 +1,3 @@
-file <- system.file("extdata", "s_isatab.txt", package="isaeditor")
-isa_s <- read_isa(file)
-file <- system.file("extdata", "a_isatab_transcriptome_profiling_nucleotide_sequencing.txt", package="isaeditor")
-isa_a <- read_isa(file)
-
-
-check_integrity <- function(object) {
-
-  expect_equal(nrow(object$contents), object$n)
-  expect_true(all(object$node_id %in% object$col_id))
-  expect_equal(length(unique(object$node_id)), sum(object$is_node))
-  expect_equal(ncol(object$contents), nrow(object$isa_stru))
-  expect_equal(colnames(object$contents), object$isa_stru$col_id)
-  cols_are_vectors <- unlist(lapply(object$contents, is.vector))
-  expect_true(all(cols_are_vectors))
-
-}
-
-
 test_that("`[[` works", {
   expect_equal(isa_s[["ID1"]], c("alpha", "beta", "gamma"))
   expect_equal(isa_s[["ID1"]], isa_s$contents[["ID1"]])
