@@ -210,6 +210,128 @@ summary.isatab <- function(object, ...) {
   }
 }
 
+## remove selected properties – helper function for [<-
+.props_remove <- function(x, property, node_id) {
+  
+  node_df <- x$isa_stru[ x$isa_stru$node_id == node_id, ]
+  pp <- paste(property, collapse=", ")
+  message(glue("Removing properties '{pp}' from node '{node}' [{node_id}]"))
+  for(prop in property) {
+    if(!prop %in% node_df$col_name) {
+      message(glue("Property '{prop}' does not exist, skipping"))
+    } else {
+      message(glue("Removing property '{prop}' from node '{node}' [{node_id}]"))
+      .col_id <- x$isa_stru$col_id[ match(prop, x$isa_stru$col_name) ]
+      x <- isa_property_rm(x, .col_id)
+    }
+  }
+
+  x
+}
+
+## fill selected props of node node_id with values
+## helper function for [<-
+.props_modify <- function(x, property, node_id, after_id, value) {
+  # isa_stru of the node_id only
+  node_df <- x$isa_stru[ x$isa_stru$node_id == node_id, ]
+
+  for(prop in property) {
+    if(!prop %in% node_df$col_name) {
+      if(is.null(after_id)) {
+        after_id <- last(node_df$col_id)
+      }
+      stopifnot(after_id %in% node_df$col_id)
+      message(glue("Creating property {prop} for node {node} [{node_id}] after column [{after_id}]"))
+      if(is(value, "data.frame")) {
+        stopifnot(length(value) > 0)
+        .val <- value[[1]]
+        value[[1]] <- NULL
+      } else {
+        .val <- value
+      }
+      tmp <- .isa_property_add(x, prop, .val, node_id=node_id, after_id=after_id)
+      x <- tmp$x
+      after_id <- tmp$id
+      stopifnot(length(after_id) == 1)
+      node_df <- x$isa_stru[ x$isa_stru$node_id == node_id, ]
+    } else {
+      message(glue("Modyfying property {prop} for node {node} [{node_id}]"))
+      .col_id <- x$isa_stru$col_id[ match(prop, x$isa_stru$col_name) ]
+      if(is(value, "data.frame")) {
+        .val <- value[[1]]
+        value[[1]] <- NULL
+      } else {
+        .val <- value
+      }
+      stopifnot(!is.null(.val))
+      x[[.col_id]] <- .val
+    }
+
+  }
+  x
+}
+
+## helper function for [<-
+## for when a node needs to be created
+.node_new <- function(x, node, after_id, value) {
+  sel <- x$isa_stru$is_node & x$isa_stru$node_name == node
+  # create a new node
+  # but after which node?
+  if(is.null(after_id)) {
+    after_id <- last(x$isa_stru$node_id)
+  } else {
+    after_id <- x$isa_stru$node_id[ x$isa_stru$col_id == after_id ]
+  }
+  after_name <- .col_id_to_name(x, after_id)
+  message(glue("Adding node {node} after node {after_name} [{after_id}]"))
+
+  # the internal version gives us the new node id
+  tmp <- .isa_node_add(x, node, after_node=after_id)
+  x <- tmp$x
+  node_id <- tmp$node_id
+
+  tmp2 <- .col_insert_value(x, node_id, value)
+
+  c(tmp2, list(node_id=node_id))
+}
+
+## helper function for [<-
+## inserts value into a column, *using up* columns if it is a data frame
+.col_insert_value <- function(x, col_id, value) {
+
+  if(is(value, "data.frame")) {
+    .val <- value[[1]]
+    value[[1]] <- NULL
+  } else {
+    .val <- value
+  }
+  
+  ## populate the new node with values
+  stopifnot(!is.null(.val))
+  x[[col_id]] <- .val
+
+  list(x=x, value=value)
+}
+
+## checks node selection for ambiguity, that 
+## is multiple nodes with the same name
+.check_sel <- function(x, sel, node, n) {
+
+  if(sum(sel) > 1) {
+    if(is.na(n)) {
+      stop(glue("Node name {node} is ambiguous (there are {sum(sel)} nodes called {node}).\nPlease use `[[ID]]` or the `n` parameter."))
+    } else {
+      if(n > sum(sel)) {
+        n <- sum(sel)
+      }
+      sel <- which(sel)[n]
+      message(glue("Selecting node {node} [{x$isa_stru$node_id[sel]}], {n} out of {sum(sel)}"))
+    }
+  }
+
+  return(sel)
+}
+
 #' @param value vector or data frame with values which will be inserted into the isatab
 #'        at the specified column. 
 #' @param node node column (e.g. "Sample Name")
@@ -230,90 +352,43 @@ summary.isatab <- function(object, ...) {
   ## first, find the node_id
   sel <- x$isa_stru$is_node & x$isa_stru$node_name == node
 
-  if(new || !any(sel)) {
+  ## instead of a convoluted if/else structure, we have here
+  ## multiple mutually exclusive if statemets for verbosity
+
+  if((new || !any(sel)) && is.null(value)) {
     ## NULL nodes are to be deleted, so just return the object
-    if(is.null(value)) {
-      return(x)
-    }
-    # create a new node
-    # but after which node?
-    if(is.null(after_id)) {
-      after_id <- last(x$isa_stru$node_id)
-    } else {
-      after_id <- x$isa_stru$node_id[ x$isa_stru$col_id == after_id ]
-    }
-    after_name <- .col_id_to_name(x, after_id)
-    message(glue("Adding node {node} after node {after_name} [{after_id}]"))
+    return(x)
+  }
 
-    # the internal version gives us the new node id
-    tmp <- .isa_node_add(x, node, after_node=after_id)
-    x <- tmp$x
-    node_id <- tmp$node_id
-
-    if(is(value, "data.frame")) {
-      .val <- value[[1]]
-      value[[1]] <- NULL
-    } else {
-      .val <- value
-    }
-    
-    ## populate the new node with values
-    stopifnot(!is.null(.val))
-    x[[node_id]] <- .val
-
+  if(new || !any(sel)) {
+    # create a new node, adding values
+    tmp <- .node_new(x, node, after_id, value)
+    node_id  <- tmp$node_id
+    value    <- tmp$value
+    x        <- tmp$x
     after_id <- node_id
+  } 
 
-  } else { 
-    ## selecting an existing node
-    if(sum(sel) > 1) {
-      if(is.na(n)) {
-        stop(glue("Node name {node} is ambiguous (there are {sum(sel)} nodes called {node}).\nPlease use `[[ID]]` or the `n` parameter."))
-      } else {
-        if(n > sum(sel)) {
-          n <- sum(sel)
-        }
-        sel <- which(sel)[n]
-        message(glue("Selecting node {node} [{x$isa_stru$node_id[sel]}], {n} out of {sum(sel)}"))
-      }
-    }
-
+  if(!(new || !any(sel))) {
+    # selecting an existing node
+    sel <- .check_sel(x, sel, node, n) 
     node_id <- x$isa_stru$node_id[sel]
 
     if(is.null(property) && !is.null(value)) {
-      message(glue("Modyfying node {node} [{node_id}]"))
-      if(is(value, "list")) {
-        .val <- value[[1]]
-        value[[1]] <- NULL
-      } else {
-        .val <- value
-      }
-    
-      ## populate the new node with values
-      stopifnot(!is.null(.val))
-      x[[node_id]] <- .val
+      tmp   <- .col_insert_value(x, node_id, value)
+      value <- tmp$value
+      x     <- tmp$x
     }
   }
-
 
   if(is.null(property) && is.null(value)) {
     message(glue("Removing node {node} [{node_id}]"))
     x <- isa_node_rm(x, node_id)
   }
 
-  node_df <- x$isa_stru[ x$isa_stru$node_id == node_id, ]
 
   if(!is.null(property) && is.null(value)) {
-    pp <- paste(property, collapse=", ")
-    message(glue("Removing properties '{pp}' from node '{node}' [{node_id}]"))
-    for(prop in property) {
-      if(!prop %in% node_df$col_name) {
-        message(glue("Property '{prop}' does not exist, skipping"))
-      } else {
-        message(glue("Removing property '{prop}' from node '{node}' [{node_id}]"))
-        .col_id <- x$isa_stru$col_id[ match(prop, x$isa_stru$col_name) ]
-        x <- isa_property_rm(x, .col_id)
-      }
-    }
+    x <- .props_remove(x, property, node_id)
   }
 
   if(!is.null(property) && !is.null(value)) {
@@ -324,42 +399,7 @@ summary.isatab <- function(object, ...) {
     pp <- paste(property, collapse=", ")
     message(glue("Modifying / creating properties '{pp}'..."))
 
-    # isa_stru of the node_id only
-
-    for(prop in property) {
-      if(!prop %in% node_df$col_name) {
-        if(is.null(after_id)) {
-          after_id <- last(node_df$col_id)
-        }
-        stopifnot(after_id %in% node_df$col_id)
-        message(glue("Creating property {prop} for node {node} [{node_id}] after column [{after_id}]"))
-        if(is(value, "data.frame")) {
-          stopifnot(length(value) > 0)
-          .val <- value[[1]]
-          value[[1]] <- NULL
-        } else {
-          .val <- value
-        }
-        tmp <- .isa_property_add(x, prop, .val, node_id=node_id, after_id=after_id)
-        x <- tmp$x
-        after_id <- tmp$id
-        stopifnot(length(after_id) == 1)
-        node_df <- x$isa_stru[ x$isa_stru$node_id == node_id, ]
-      } else {
-        message(glue("Modyfying property {prop} for node {node} [{node_id}]"))
-        .col_id <- x$isa_stru$col_id[ match(prop, x$isa_stru$col_name) ]
-        if(is(value, "data.frame")) {
-          .val <- value[[1]]
-          value[[1]] <- NULL
-        } else {
-          .val <- value
-        }
-        stopifnot(!is.null(.val))
-        x[[.col_id]] <- .val
-      }
-
-    }
-
+    x <- .props_modify(x, property, node_id, after_id, value)
   }
 
   .check_integrity(x)
