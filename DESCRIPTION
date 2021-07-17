@@ -1,6 +1,6 @@
 Package: isaeditor
 Title: Tools to manipulate ISATAB files
-Version: 0.0.0.9000
+Version: 0.0.0.9001
 Authors@R: 
     person(given = "January",
            family = "Weiner",
