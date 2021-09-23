@@ -14,7 +14,7 @@ test_that("node_show works", {
 
   ns <- node_show(isa_s, "ID1")
   expect_true(is(ns, "data.frame"))
-  expect_equal(nrow(ns), 19)
+  expect_equal(nrow(ns), 5)
   expect_equal(ncol(ns), 4)
   expect_equal(sum(ns$is_node), 1)
   expect_true(all(ns$col_id %in% 
@@ -26,9 +26,9 @@ test_that("node_show works", {
 
 test_that("node_select works", {
   expect_error(node_select(isa_s, c("ID1", "ID2")))
-  x <- node_select(isa_s, c("ID1", "ID22"))
+  x <- node_select(isa_s, c("ID1", "ID6"))
   check_integrity(x)
-  expect_true(setequal(x$isa_stru$node_id, c("ID1", "ID22")))
+  expect_true(setequal(x$isa_stru$node_id, c("ID1", "ID6")))
   x <- node_select(isa_s, c("ID1"), inverse=TRUE)
   check_integrity(x)
   expect_false("ID1" %in% x$isa_stru$col_id)

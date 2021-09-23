@@ -68,7 +68,7 @@ test_that("`[<-` works", {
   x <- isa_s
   
   # check that removing properties works
-  expect_message(x["Source Name", "Characteristics[UUID]"] <- NULL)
+  expect_message(x["Source Name", "Characteristics[Organism]"] <- NULL)
   check_integrity(x)
   y <- isa_property_rm(isa_s, prop_ids = "ID2")
   expect_equal(ncol(x$contents), ncol(isa_s$contents) - 1)
