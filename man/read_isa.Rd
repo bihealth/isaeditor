@@ -12,7 +12,7 @@ write_isa(x, file)
 \arguments{
 \item{file}{file name to read / write}
 
-\item{type}{Either "auto", or "investigation", "study", "assay" (can
+\item{type}{Either 'auto', or 'investigation', 'study', 'assay' (can
 be abbreviated)}
 
 \item{x}{isatab object}
@@ -25,11 +25,11 @@ an object of class \code{isa_i} (for investigation files).
 Read or write an isatab file
 }
 \examples{
-file <- system.file("extdata", "i_Investigation.txt", package="isaeditor")
+file <- system.file('extdata', 'i_Investigation.txt', package='isaeditor')
 isa_i <- read_isa(file)
 print(isa_i)
 
-file <- system.file("extdata", "s_isatab.txt", package="isaeditor")
+file <- system.file('extdata', 's_isatab.txt', package='isaeditor')
 isa_s <- read_isa(file)
 print(isa_s)
 

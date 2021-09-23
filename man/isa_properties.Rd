@@ -22,13 +22,13 @@ Show properties associated with a node ID
 \details{
 Note: IDs are a thing internal to this R package. They are not imported
 from or exported to actual ISA-tab files. However, given that the node
-"identifiers" (e.g. "Sample Name") can be ambiguous, IDs are necessary
+'identifiers' (e.g. 'Sample Name') can be ambiguous, IDs are necessary
 to unambiguously identify a node.
 }
 \examples{
-file <- system.file("extdata", "s_isatab.txt", package="isaeditor")
+file <- system.file('extdata', 's_isatab.txt', package='isaeditor')
 isa_s <- read_isa(file)
-isa_properties(isa_s, "ID1")
+isa_properties(isa_s, 'ID1')
 }
 \seealso{
 \code{\linkS4class{isatab}}, \code{\link[=isa_nodes]{isa_nodes()}}

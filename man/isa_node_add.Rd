@@ -18,7 +18,7 @@ isa_property_rm(x, prop_ids = NULL)
 \arguments{
 \item{x}{isatab object}
 
-\item{node}{new node identifier (e.g. "Sample Name")}
+\item{node}{new node identifier (e.g. 'Sample Name')}
 
 \item{columns}{(optional) character vector with columns to add}
 
@@ -28,7 +28,7 @@ inserted}
 \item{node_id}{ID of the node in which to add the property (default:
 last node in the isatab).}
 
-\item{property}{Character vector with identifiers (such as "Comment[Important]") of the properties to be inserted}
+\item{property}{Character vector with identifiers (such as 'Comment[Important]') of the properties to be inserted}
 
 \item{values}{vector (if only one property is added) or data frame (if
 multiple properties are added) of values used to initialize the node /
@@ -57,15 +57,15 @@ the documentation for \code{\linkS4class{isatab}} for details.
 
 Note: IDs are a thing internal to this R package. They are not imported
 from or exported to actual ISA-tab files. However, given that the node
-"identifiers" (e.g. "Sample Name") can be ambiguous, IDs are necessary
+'identifiers' (e.g. 'Sample Name') can be ambiguous, IDs are necessary
 to unambiguously identify a node.
 }
 \examples{
-file <- system.file("extdata", "s_isatab.txt", package="isaeditor")
+file <- system.file('extdata', 's_isatab.txt', package='isaeditor')
 isa_s <- read_isa(file)
-isa_s <- isa_node_add(isa_s, "Library Name", columns="Comment[Raw File]")
+isa_s <- isa_node_add(isa_s, 'Library Name', columns='Comment[Raw File]')
 isa_nodes(isa_s)
-isa_s <- isa_property_add(isa_s, "Characteristics[Age]", values=c(75, 38, 43), node_id="ID1")
+isa_s <- isa_property_add(isa_s, 'Characteristics[Age]', values=c(75, 38, 43), node_id='ID1')
 }
 \seealso{
 \code{\linkS4class{isatab}}

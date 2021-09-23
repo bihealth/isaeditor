@@ -24,16 +24,16 @@ Find IDs of nodes or properties fullfilling specified criteria
 \details{
 Note: IDs are a thing internal to this R package. They are not imported
 from or exported to actual ISA-tab files. However, given that the node
-"identifiers" (e.g. "Sample Name") can be ambiguous, IDs are necessary
+'identifiers' (e.g. 'Sample Name') can be ambiguous, IDs are necessary
 to unambiguously identify a node.
 }
 \examples{
-file <- system.file("extdata", 
-   "a_isatab_transcriptome_profiling_nucleotide_sequencing.txt",
-   package="isaeditor")
+file <- system.file('extdata', 
+   'a_isatab_transcriptome_profiling_nucleotide_sequencing.txt',
+   package='isaeditor')
 isa_a <- read_isa(file)
-isa_ID_find(isa_a, node_pattern=".* Name")
-isa_a[["ID34"]]
+isa_ID_find(isa_a, node_pattern='.* Name')
+isa_a[['ID34']]
 }
 \seealso{
 \code{\linkS4class{isatab}}

@@ -25,7 +25,9 @@ prop_select(x, prop_id, inverse = FALSE)
 \item{prop_id}{property IDs to be selected}
 }
 \value{
-a data.frame like object
+Functions \code{node_list} and \code{node_show} return a data.frame like
+object. Functions \code{node_select} and \code{prop_select} return an object of
+class isatab.
 }
 \description{
 Lists all the nodes in an isatab object
@@ -46,7 +48,7 @@ selected nodes.
 selected property IDs (which may not be node IDs!).
 }
 \examples{
-file <- system.file("extdata", "s_isatab.txt", package="isaeditor")
+file <- system.file('extdata', 's_isatab.txt', package='isaeditor')
 isa_s <- read_isa(file)
 node_list(isa_s)
 }

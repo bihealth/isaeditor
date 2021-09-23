@@ -98,8 +98,6 @@ test_that("`[<-` works", {
   check_integrity(x)
   expect_equal(x[ "Test Node 3", "Test Property 2" ], rep(NA, 3))
 
-  
-
   x <- isa_a
   expect_error(x[ "Extract Name" ] <- 1:3)
   x[ "Test Node", "Test Property" ] <- data.frame(1:3, 4:6)
@@ -107,9 +105,14 @@ test_that("`[<-` works", {
   expect_equal(as.matrix(x$contents), as.matrix(isa_a$contents))
   expect_mapequal(x$isa_stru, isa_a$isa_stru)
 
-
   x[ "Extract Name", new=TRUE ] <- 1:3
   check_integrity(x)
   expect_equal(sum(x$isa_stru$is_node & x$isa_stru$node_name == "Extract Name"), 3)
+
+  # test that assignment to nodes works correctly if there are multiple
+  # nodes / properties with the same label
+  x <- isa_a
+  x[ "Extract Name", "Term Source REF", n=2 ] <- 1:3
+  expect_equal(x[ "Extract Name", "Term Source REF", n=2 ], 1:3)
 
 })

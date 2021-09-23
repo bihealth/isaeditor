@@ -29,7 +29,7 @@ number of rows to be added will be such that the final number of rows is
 will be removed.
 }
 \examples{
-file <- system.file("extdata", "s_isatab.txt", package="isaeditor")
+file <- system.file('extdata', 's_isatab.txt', package='isaeditor')
 isa_s <- read_isa(file)
 isa_new <- isa_rows_add(isa_s, 10, total=TRUE)
 n_row(isa_new)

@@ -252,7 +252,7 @@ summary.isatab <- function(object, ...) {
             node_df <- x$isa_stru[x$isa_stru$node_id == node_id, ]
         } else {
             message(glue("Modyfying property {prop} for node {node} [{node_id}]"))
-            .col_id <- x$isa_stru$col_id[match(prop, x$isa_stru$col_name)]
+            .col_id <- node_df$col_id[match(prop, node_df$col_name)]
             if (is(value, "data.frame")) {
                 .val <- value[[1]]
                 value[[1]] <- NULL
@@ -362,7 +362,7 @@ summary.isatab <- function(object, ...) {
 
     if (!(new || !any(sel))) {
         # selecting an existing node
-        sel <- .check_sel(x, sel, node, n)
+        sel     <- .check_sel(x, sel, node, n)
         node_id <- x$isa_stru$node_id[sel]
 
         if (is.null(property) && !is.null(value)) {
