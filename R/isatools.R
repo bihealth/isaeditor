@@ -452,7 +452,7 @@ isa_property_rm <- function(x, prop_ids = NULL) {
 #' @seealso [`isatab-class`]
 #' @examples
 #' file <- system.file('extdata', 
-#'    'a_isatab_transcriptome_profiling_nucleotide_sequencing.txt',
+#'    'a_isatab.txt',
 #'    package='isaeditor')
 #' isa_a <- read_isa(file)
 #' isa_ID_find(isa_a, node_pattern='.* Name')

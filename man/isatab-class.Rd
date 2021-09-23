@@ -2,6 +2,7 @@
 % Please edit documentation in R/isatab_class.R
 \name{isatab-class}
 \alias{isatab-class}
+\alias{dim.isatab}
 \alias{print.isatab}
 \alias{as.data.frame.isatab}
 \alias{as_tibble.isatab}
@@ -13,6 +14,8 @@
 \alias{[[.isatab}
 \title{Class for assay and study objects}
 \usage{
+\method{dim}{isatab}(x)
+
 \method{print}{isatab}(x, ...)
 
 \method{as.data.frame}{isatab}(x, ...)

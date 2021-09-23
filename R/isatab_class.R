@@ -107,6 +107,13 @@ NULL
 
 #' @rdname isatab-class
 #' @param x object of class isatab
+#' @export
+dim.isatab <- function(x) {
+  return(dim(x$contents))
+}
+
+#' @rdname isatab-class
+#' @param x object of class isatab
 #' @importFrom colorDF df_style df_style<- col_type<-
 #' @export
 print.isatab <- function(x, ...) {

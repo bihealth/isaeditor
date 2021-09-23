@@ -39,3 +39,54 @@ And the development version from [GitHub](https://github.com/) with:
 devtools::install_github("bihealth/isaeditor")
 ```
 
+
+## Basic usage
+
+### Reading ISA-Tabs
+
+Use the `read_isa()` function:
+
+```{r}
+library(isaeditor)
+file  <- system.file('extdata', 's_isatab.txt', package='isaeditor')
+isa_s <- read_isa(file)
+dim(isa_s)
+class(isa_s)
+summary(isa_s)
+print(isa_s)
+```
+
+You can directly modify the isatab object almost as simply as you would do
+it with a data frame:
+
+```{r}
+## access a node
+isa_s[ "New Node" ] <- c("em", "pstrem", "bzdrem")
+
+## create a property of the new node
+isa_s[ "New Node", "Characteristics[Replicate]" ] <- 1:3
+
+## remove the node and all its properties
+isa_s[ "New Node" ] <- NULL
+```
+
+Unfortunately, multiple nodes with the same label may exist according to
+the ISA-Tab specifications. Sometimes it is therefore necessary to indicate
+which of these nodes we mean. There are several ways to do it in
+`isaeditor`, two of them are shown here:
+
+```{r}
+file <- system.file('extdata', 'a_isatab.txt', package='isaeditor')
+isa_a <- read_isa(file)
+
+## use the internal ID to access the node
+## you can also use isa_ID_find for that
+isa_nodes(isa_a)
+isa_a[['ID34']]
+
+## specify which of the nodes 
+isa_a[ "Extract Name", n=2 ]
+```
+
+
+
