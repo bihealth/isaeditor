@@ -2,3 +2,5 @@
 .gitignore
 .RData
 .Rhistory
+^\.github$
+^README\.Rmd$
