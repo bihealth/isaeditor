@@ -1,14 +1,20 @@
 Package: isaeditor
-Title: Tools to manipulate ISATAB files
-Version: 0.0.0.9002
+Title: Tools to manipulate ISA-Tab files
+Version: 0.1.0
 Authors@R: 
     person(given = "January",
            family = "Weiner",
            role = c("aut", "cre"),
            email = "january.weiner@gmail.com",
-           comment = c(ORCID = "https://orcid.org/0000-0003-1438-7819"))
-Description: What the package does (one paragraph).
+           comment = c(ORCID = "0000-0003-1438-7819"))
+Description: 
+  ISA-Tab is a general purpose framework for storing complex metadata in
+  omics applications. It is notoriously hard to manipulate due to the fact
+  that it is a graph rather than a spreadsheet. The isaeditor package is
+  meant to facilitate manipulating, modifying, populating, reading and
+  writing ISA-Tab files in R.
 License: GPL (>= 3)
+URL: https://github.com/bihealth/isaeditor/
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
