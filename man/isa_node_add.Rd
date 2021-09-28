@@ -42,6 +42,9 @@ be inserted (deault: last property)}
 
 \item{prop_ids}{IDs of the properties to be removed}
 }
+\value{
+These functions return an object of isatab-class.
+}
 \description{
 Add or remove nodes and properties
 }

@@ -9,6 +9,9 @@ n_row(x)
 \arguments{
 \item{x}{an array-like object}
 }
+\value{
+an integer of length 1 or NULL.
+}
 \description{
 Generic replacement for \code{nrow()}
 }

@@ -297,6 +297,7 @@ isa_rows_add <- function(x, n, total = FALSE, replicate = TRUE) {
 #' isa_s <- isa_node_add(isa_s, 'Library Name', columns='Comment[Raw File]')
 #' isa_nodes(isa_s)
 #' isa_s <- isa_property_add(isa_s, 'Characteristics[Age]', values=c(75, 38, 43), node_id='ID1')
+#' @return These functions return an object of isatab-class.
 #' @export
 isa_node_add <- function(x, node, columns = NULL, after_node = NULL) {
 

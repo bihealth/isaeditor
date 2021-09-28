@@ -61,6 +61,15 @@ at the specified column.}
 
 \item{col_id}{Column ID (e.g. 'ID34')}
 }
+\value{
+An object of \code{isatab-class} is a list containing three elements:
+\itemize{
+\item \code{isa_stru}, a data frame holding the meta-data
+\item \code{contents}, a data frame holding the data
+\item \code{type}, the type of the \code{isatab} component (study, investigation,
+assay).
+}
+}
 \description{
 Class for isatab assay and study objects
 }

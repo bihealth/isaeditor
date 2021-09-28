@@ -101,6 +101,11 @@
 #' # remove node and its properties
 #' isa_a['Test Node'] <- NULL
 #' ```
+#' @return An object of `isatab-class` is a list containing three elements:
+#'  * `isa_stru`, a data frame holding the meta-data 
+#'  * `contents`, a data frame holding the data
+#'  * `type`, the type of the `isatab` component (study, investigation,
+#'  assay).
 #' @seealso [read_isa()] [isa_ID_find()]
 #' @name isatab-class
 NULL
@@ -152,6 +157,7 @@ as_tibble.isatab <- function(x, ...) {
 #'
 #' Generic replacement for `nrow()`
 #' @param x an array-like object
+#' @return an integer of length 1 or NULL.
 #' @export
 n_row <- function(x) {
     UseMethod("n_row", x)
