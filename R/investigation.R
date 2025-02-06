@@ -1,27 +1,189 @@
 ## definition of the isa investigation file blocks
 blocks <- c("ONTOLOGY SOURCE REFERENCE", "INVESTIGATION", "INVESTIGATION PUBLICATIONS", "INVESTIGATION CONTACTS", "STUDY")
 
+blocks_names <- c(
+ "ONTOLOGY SOURCE REFERENCE"  = "ONTOLOGY_SOURCE_REFERENCE",
+ "INVESTIGATION"              = "INVESTIGATION",
+ "INVESTIGATION PUBLICATIONS" = "INVESTIGATION_PUBLICATIONS",
+ "INVESTIGATION CONTACTS"     = "INVESTIGATION_CONTACTS",
+ "STUDY"                      = "STUDY"
+)
+
 ## definition of the isa investigation file study blocks
 study_blocks <- c("STUDY DESIGN DESCRIPTORS", "STUDY PUBLICATIONS", "STUDY FACTORS", "STUDY ASSAYS", "STUDY PROTOCOLS", "STUDY CONTACTS")
+
+study_blocks_names <- c(
+ "STUDY"                      = "STUDY",
+ "STUDY DESIGN DESCRIPTORS"   = "STUDY_DESIGN_DESCRIPTORS",
+ "STUDY PUBLICATIONS"         = "STUDY_PUBLICATIONS",
+ "STUDY FACTORS"              = "STUDY_FACTORS",
+ "STUDY ASSAYS"               = "STUDY_ASSAYS",
+ "STUDY PROTOCOLS"            = "STUDY_PROTOCOLS",
+ "STUDY CONTACTS"             = "STUDY_CONTACTS")
+
+protocol_fields_names <- c(
+ "Name"                                   = "Name",
+ "Type"                                   = "Type",
+ "Type Term Accession Number"             = "Type Term Accession Number",
+ "Type Term Source REF"                   = "Type Term Source REF",
+ "Description"                            = "Description",
+ "URI"                                    = "URI",
+ "Version"                                = "Version",
+ "Parameters Name"                        = "Parameters_Name",
+ "Parameters Name Term Accession Number"  = "Parameters_Name_Term_Accession_Number",
+ "Parameters Name Term Source REF"        = "Parameters_Name_Term_Source_REF",
+ "Components Name"                        = "Components_Name",
+ "Components Type"                        = "Components_Type",
+ "Components Type Term Accession Number"  = "Components_Type_Term_Accession_Number",
+ "Components Type Term Source REF"        = "Components_Type_Term_Source_REF"
+ )
+
+protocol_fields <- c(
+  "Name",
+  "Type",
+  "Type Term Accession Number",
+  "Type Term Source REF",
+  "Description",
+  "URI",
+  "Version",
+  "Parameters Name",
+  "Parameters Name Term Accession Number",
+  "Parameters Name Term Source REF",
+  "Components Name",
+  "Components Type",
+  "Components Type Term Accession Number",
+  "Components Type Term Source REF")
+
+# reverse the .process_section function
+.section_to_text <- function(section, title = NULL) {
+
+  # convert the data frame to a character vector of length 1
+  # by pasting the columns and rows together
+  ret <- paste0(
+    apply(section, 1, \(x) {
+
+            x[is.na(x)] <- '""'
+            paste(x, collapse = "\t")
+
+         }),
+    collapse = "\n"
+  )
+
+  if(!is.null(title)) {
+    ret <- paste0(title, "\n", ret)
+  }
+
+  ret
+}
+
+
+.investigation_to_text <- function(i) {
+
+  if(!"isa_i" %in% class(i)) {
+    stop("Object is not of class isa_i")
+  }
+  
+  out <- ""
+
+  ret <- lapply(blocks, \(section) {
+      id <- blocks_names[section]
+      if(id == "STUDY") {
+        return(.studies_to_text(i$STUDIES))
+      }
+      .section_to_text(i[[id]], section)
+  })
+
+  ret <- paste0(ret, collapse = "\n")
+  ret
+}
+
+.protocol_to_df <- function(prot) {
+
+  ret <- prot$Protocol 
+  colnames(ret) <- c("Section", "Value")
+  ret$Value[is.na(ret$Value)] <- '""'
+
+  p <- prot$Parameters
+  p <- data.frame(Section = p$Label,
+                  Value = apply(p[, -1, drop = F], 1, \(x) {
+                          x[is.na(x)] <- ''
+                          paste0('"', paste0(x, collapse = ";"), '"')
+                  }))
+  ret <- rbind(ret, p)
+
+  p <- prot$Components
+  p <- data.frame(Section = p$Label,
+                  Value = apply(p[, -1, drop = F], 1, \(x) {
+                          x[is.na(x)] <- ''
+                          paste0('"', paste0(x, collapse = ";"), '"')
+                  }))
+  ret <- rbind(ret, p)
+
+  if(!setequal(ret$Section, protocol_fields)) {
+    actual <- paste(ret$Section, collapse = ", ")
+    forbidden <- paste(setdiff(ret$Section, protocol_fields), collapse = ", ")
+    missing <- paste(setdiff(protocol_fields, ret$Section), collapse = ", ")
+    stop(glue("Protocol fields do not match the expected fields;\nactual: {actual}\nmissing: {missing}\nnot allowed: {forbidden}"))
+  }
+
+  ret <- ret[ match(protocol_fields, ret$Section), ]
+
+  ret$Section <- paste0("Study Protocol ", ret$Section)
+  ret
+}
+
+.protocol_to_text <- function(protocols) {
+
+  prot_df <- lapply(protocols, .protocol_to_df)
+  prot_df <- Reduce(\(x, y) cbind(x, y$Value), prot_df)
+  .section_to_text(prot_df, "STUDY PROTOCOLS")
+
+}
+
+.study_to_text <- function(study) {
+
+  ret <- lapply(study_blocks, \(section) {
+      id <- study_blocks_names[section]
+      if(id == "STUDY_PROTOCOLS") {
+        return(.protocol_to_text(study$STUDY_PROTOCOLS))
+      } else {
+        .section_to_text(study[[id]], section)
+      }
+  })
+
+  ret <- paste0(ret, collapse = "\n")
+  ret <- paste0(.section_to_text(study$STUDY, "STUDY"), "\n", ret)
+  ret
+}
+
+.studies_to_text <- function(studies) {
+
+  ret <- lapply(studies, .study_to_text)
+  paste0(ret, collapse = "\n")
+}
+
 
 
 ## parse a single study protocol
 .protocol_digest <- function(p_id, proto) {
 
-    p_components <- 1:nrow(proto)
-    names(p_components) <- proto[[1]]
-    # ret <- lapply(p_components, function(pc) proto[[p_id]][pc])
-    ret <- list()
+  ret <- list()
+  proto[["Section"]] <- gsub("Study Protocol ", "", proto[["Section"]])
 
-    param_sel <- grep("Study Protocol Parameters", proto[["Section"]])
-    text <- paste0(proto[[p_id]][param_sel], collapse = "\n")
-    ret[["parameters"]] <- cbind(proto[["Section"]][param_sel], read_delim(text, delim = ";", col_names = FALSE))
+  param_sel <- !grepl("^(Parameters|Components)", proto[["Section"]])
+  ret$Protocol <- proto[param_sel, c("Section", p_id)]
 
-    param_sel <- grep("Study Protocol Components", proto[["Section"]])
-    text <- paste0(proto[[p_id]][param_sel], collapse = "\n")
-    ret[["components"]] <- cbind(proto[["Section"]][param_sel], read_delim(text, delim = ";", col_names = FALSE))
+  param_sel <- grep("^Parameters", proto[["Section"]])
+  text <- paste0(proto[[p_id]][param_sel], collapse = "\n")
+  ret[["Parameters"]] <- cbind(proto[["Section"]][param_sel], read_delim(text, delim = ";", na="NA", col_names = FALSE))
+  colnames(ret[["Parameters"]]) <- c("Label", paste0("P", 1:(ncol(ret[["Parameters"]]) - 1)))
 
-    ret
+  param_sel <- grep("^Components", proto[["Section"]])
+  text <- paste0(proto[[p_id]][param_sel], collapse = "\n")
+  ret[["Components"]] <- cbind(proto[["Section"]][param_sel], read_delim(text, delim = ";", na="NA", col_names = FALSE))
+  colnames(ret[["Components"]]) <- c("Label", paste0("C", 1:(ncol(ret[["Components"]]) - 1)))
+
+  ret
 }
 
 ## parse study protocols
@@ -37,14 +199,14 @@ study_blocks <- c("STUDY DESIGN DESCRIPTORS", "STUDY PUBLICATIONS", "STUDY FACTO
     protocols
 }
 
-## parse the PROCESS section of a STUDY
+## parse a section
 .process_section <- function(section) {
 
     ret <- read_tsv(paste(section, collapse = "\n"), col_names = FALSE)
 
-    if (ncol(ret) < 2) {
-        ret <- cbind(ret, "")
-    }
+   #if (ncol(ret) < 2) {
+   #    ret <- cbind(ret, "")
+   #}
 
     colnames(ret) <- c("Field", paste0("C", 1:(ncol(ret) - 1)))
 
@@ -54,10 +216,22 @@ study_blocks <- c("STUDY DESIGN DESCRIPTORS", "STUDY PUBLICATIONS", "STUDY FACTO
 ## parse the STUDY section of an INVESTIGATION
 .process_study <- function(study) {
 
-    study <- lapply(study, .process_section)
-    study$.protocols <- .process_study_protocols(study[["STUDY PROTOCOLS"]])
+  study <- lapply(study, .process_section)
+  study$STUDY_PROTOCOLS <- .process_study_protocols(study[["STUDY_PROTOCOLS"]])
 
-    study
+  f_name <- study$STUDY$C1[ study$STUDY$Field == "Study File Name" ]
+  message("Reading study isatab file ", f_name)
+  study$.isa <- read_isa(f_name)
+
+  assays <- setdiff(colnames(study$STUDY_ASSAYS), "Field")
+  sel <- which(study$STUDY_ASSAYS$Field == "Study Assay File Name")
+  assay_files <- lapply(assays, \(x) {
+      study$STUDY_ASSAYS[[x]][sel]
+  })
+  study$.assays <- lapply(assay_files, read_isa)
+  names(study$.assays) <- assays
+
+  study
 }
 
 ## parse the INVESTIGATION file. Called from read_isa()
@@ -78,15 +252,19 @@ study_blocks <- c("STUDY DESIGN DESCRIPTORS", "STUDY PUBLICATIONS", "STUDY FACTO
         if (l %in% blocks) {
 
             cur_block <- l
+            cur_block_name <- blocks_names[cur_block]
 
             if (cur_block == "STUDY") {
                 cur_study_n <- length(.studies) + 1
-                cur_study_block <- cur_block
+
+                cur_study_block <- "STUDY"
+                cur_study_block_name <- "STUDY"
+
                 .studies[[cur_study_n]] <- list()
                 # read_blocks[['studies']][[cur_study_n]][[cur_study_block]] <- list()
             } else {
                 ## only STUDY may be repeated multiple times
-                if (!is.null(read_blocks[[cur_block]])) {
+                if (!is.null(read_blocks[[cur_block_name]])) {
                   stop(glue("Block {cur_block} in file {file_name} repeated twice, aborting"))
                 }
             }
@@ -98,25 +276,27 @@ study_blocks <- c("STUDY DESIGN DESCRIPTORS", "STUDY PUBLICATIONS", "STUDY FACTO
                 if (l %in% study_blocks) {
                   # start new study block
                   cur_study_block <- l
+                  cur_study_block_name <- study_blocks_names[cur_study_block]
+
                   # study blocks cannot be repeated either
-                  stopifnot(is.null(.studies[[cur_study_n]][[cur_study_block]]))
+                  stopifnot(is.null(.studies[[cur_study_n]][[cur_study_block_name]]))
+
                   # read_blocks[['studies']][[cur_study_n]][[cur_study_block]] <- list()
                 } else {
                   # append line to the cur_study_block
-                  .studies[[cur_study_n]][[cur_study_block]] <- c(.studies[[cur_study_n]][[cur_study_block]], l)
+                  .studies[[cur_study_n]][[cur_study_block_name]] <- c(.studies[[cur_study_n]][[cur_study_block_name]], l)
                 }
             } else {
                 # part of a regular block
                 stopifnot(!is.na(cur_block))
-                read_blocks[[cur_block]] <- c(read_blocks[[cur_block]], l)
+                read_blocks[[cur_block_name]] <- c(read_blocks[[cur_block_name]], l)
             }
         }
     }
 
 
     read_blocks <- lapply(read_blocks, .process_section)
-    read_blocks[[".studies"]] <- lapply(.studies, .process_study)
-
+    read_blocks[["STUDIES"]] <- lapply(.studies, .process_study)
 
     class(read_blocks) <- "isa_i"
     return(read_blocks)
@@ -147,9 +327,9 @@ print.isa_i <- function(x, ...) {
     })
 
 
-    tmp.studies <- lapply(1:length(x$.studies), function(i) {
+    tmp.studies <- lapply(1:length(x$STUDIES), function(i) {
         ret <- lapply(study_blocks, function(sbl) {
-            tibble(Section = glue("STUDY {i}"), Subsection = sbl, x$.studies[[i]][[sbl]])
+            tibble(Section = glue("STUDY {i}"), Subsection = sbl, x$STUDIES[[i]][[sbl]])
         })
         .vmerge(ret)
     })
@@ -162,7 +342,7 @@ print.isa_i <- function(x, ...) {
 summary.isa_i <- function(object, ...) {
     x <- object
 
-    cat(glue("An object of class isa_i\nInvestigation with {length(x$.studies)} studies:"))
+    cat(glue("An object of class isa_i\nInvestigation with {length(x$STUDIES)} studies:"))
     cat("\n")
 
     tmp <- x[["INVESTIGATION"]] %>%
@@ -175,10 +355,10 @@ summary.isa_i <- function(object, ...) {
     }
 
     cat("Studies:\n")
-    for (i in 1:length(x$.studies)) {
+    for (i in 1:length(x$STUDIES)) {
         cat(glue("  Study {i}:"))
         cat("\n")
-        tmp <- x$.studies[[i]][["STUDY"]] %>%
+        tmp <- x$STUDIES[[i]][["STUDY"]] %>%
             mutate(Field = gsub("Study ", "", .data[["Field"]])) %>%
             filter(!is.na(.data[["C1"]]))
         for (i in 1:nrow(tmp)) {
@@ -190,5 +370,32 @@ summary.isa_i <- function(object, ...) {
 
 
 }
+
+#' Write the ISAtab investigation to a file
+#'
+#' Write the ISAtab investigation to a file
+#' @param file The name of the file to write to. If missing, the
+#' investigation is returned as a character vector.
+#' @param isa_i The isa_i object to write
+#' @return If file is missing, the investigation as a character vector. If
+#' not, the file is written and the return value is invisible.
+#' @export
+write_investigation <- function(isa_i, file = NULL) {
+
+    ret <- .investigation_to_text(isa_i)
+
+    if(!is.null(file)) {
+      con <- file(file, open = "w")
+      on.exit(close(con))
+      cat(ret, file = con)
+      return(invisible(ret))
+    } else {
+      return(ret)
+    }
+}
+
+
+
+
 
 
