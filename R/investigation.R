@@ -247,92 +247,103 @@ protocol_fields <- c(
 }
 
 ## parse the STUDY section of an INVESTIGATION
-.process_study <- function(study) {
+.process_study <- function(study, dir) {
 
   study <- lapply(study, .process_section)
   study$STUDY_PROTOCOLS <- .process_study_protocols(study[["STUDY_PROTOCOLS"]])
 
   f_name <- study$STUDY$C1[ study$STUDY$Field == "Study File Name" ]
   message("Reading study isatab file ", f_name)
-  study$ISATAB <- read_isa(f_name)
+  study$ISATAB <- read_isa(file.path(dir, f_name))
 
   assays <- setdiff(colnames(study$STUDY_ASSAYS), "Field")
   sel <- which(study$STUDY_ASSAYS$Field == "Study Assay File Name")
   assay_files <- lapply(assays, \(x) {
       study$STUDY_ASSAYS[[x]][sel]
   })
-  study$.assays <- lapply(assay_files, read_isa)
+
+  study$.assays <- lapply(file.path(dir, assay_files), read_isa)
   names(study$.assays) <- assays
 
   study
 }
 
+.parse_blocks <- function(lines) {
+
+  read_blocks <- list()
+  .studies <- list()
+  cur_block <- NA
+  cur_study_block <- NA
+
+  ## first, split everything into blocks
+  for (l in lines) {
+
+      if (l %in% blocks) {
+
+          cur_block <- l
+          cur_block_name <- blocks_names[cur_block]
+
+          if (cur_block == "STUDY") {
+              cur_study_n <- length(.studies) + 1
+
+              cur_study_block <- "STUDY"
+              cur_study_block_name <- "STUDY"
+
+              .studies[[cur_study_n]] <- list()
+              # read_blocks[['studies']][[cur_study_n]][[cur_study_block]] <- list()
+          } else {
+              ## only STUDY may be repeated multiple times
+              if (!is.null(read_blocks[[cur_block_name]])) {
+                stop(glue("Block {cur_block} in file {file_name} repeated twice, aborting"))
+              }
+          }
+
+      } else {
+          # not a major block
+          if (cur_block == "STUDY") {
+              # part of a study block
+              if (l %in% study_blocks) {
+                # start new study block
+                cur_study_block <- l
+                cur_study_block_name <- study_blocks_names[cur_study_block]
+
+                # study blocks cannot be repeated either
+                stopifnot(is.null(.studies[[cur_study_n]][[cur_study_block_name]]))
+
+                # read_blocks[['studies']][[cur_study_n]][[cur_study_block]] <- list()
+              } else {
+                # append line to the cur_study_block
+                .studies[[cur_study_n]][[cur_study_block_name]] <- c(.studies[[cur_study_n]][[cur_study_block_name]], l)
+              }
+          } else {
+              # part of a regular block
+              stopifnot(!is.na(cur_block))
+              read_blocks[[cur_block_name]] <- c(read_blocks[[cur_block_name]], l)
+          }
+      }
+  }
+
+  return(list(blocks = read_blocks, studies = .studies))
+}
+
 ## parse the INVESTIGATION file. Called from read_isa()
 .read_investigation <- function(file_name) {
 
-    con <- file(file_name, open = "r")
-    on.exit(close(con))
-    lines <- readLines(con)
+  dir  <- dirname(file_name)
+  base <- basename(file_name)
 
-    read_blocks <- list()
-    .studies <- list()
-    cur_block <- NA
-    cur_study_block <- NA
+  con <- file(file_name, open = "r")
+  on.exit(close(con))
+  lines <- readLines(con)
 
-    ## first, split everything into blocks
-    for (l in lines) {
+  parsed <- .parse_blocks(lines)
+  read_blocks <- parsed$blocks
+  studies <- parsed$studies
+  read_blocks <- lapply(read_blocks, .process_section)
+  read_blocks[["STUDIES"]] <- lapply(studies, .process_study, dir = dir)
 
-        if (l %in% blocks) {
-
-            cur_block <- l
-            cur_block_name <- blocks_names[cur_block]
-
-            if (cur_block == "STUDY") {
-                cur_study_n <- length(.studies) + 1
-
-                cur_study_block <- "STUDY"
-                cur_study_block_name <- "STUDY"
-
-                .studies[[cur_study_n]] <- list()
-                # read_blocks[['studies']][[cur_study_n]][[cur_study_block]] <- list()
-            } else {
-                ## only STUDY may be repeated multiple times
-                if (!is.null(read_blocks[[cur_block_name]])) {
-                  stop(glue("Block {cur_block} in file {file_name} repeated twice, aborting"))
-                }
-            }
-
-        } else {
-            # not a major block
-            if (cur_block == "STUDY") {
-                # part of a study block
-                if (l %in% study_blocks) {
-                  # start new study block
-                  cur_study_block <- l
-                  cur_study_block_name <- study_blocks_names[cur_study_block]
-
-                  # study blocks cannot be repeated either
-                  stopifnot(is.null(.studies[[cur_study_n]][[cur_study_block_name]]))
-
-                  # read_blocks[['studies']][[cur_study_n]][[cur_study_block]] <- list()
-                } else {
-                  # append line to the cur_study_block
-                  .studies[[cur_study_n]][[cur_study_block_name]] <- c(.studies[[cur_study_n]][[cur_study_block_name]], l)
-                }
-            } else {
-                # part of a regular block
-                stopifnot(!is.na(cur_block))
-                read_blocks[[cur_block_name]] <- c(read_blocks[[cur_block_name]], l)
-            }
-        }
-    }
-
-
-    read_blocks <- lapply(read_blocks, .process_section)
-    read_blocks[["STUDIES"]] <- lapply(.studies, .process_study)
-
-    class(read_blocks) <- "isa_i"
-    return(read_blocks)
+  class(read_blocks) <- "isa_i"
+  return(read_blocks)
 }
 
 ## ensure that data frames have the same columns and then rbind them
