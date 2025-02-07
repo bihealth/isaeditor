@@ -2,7 +2,8 @@
 ## reads an assay or study file
 .read_isa_assay <- function(file_name, type) {
 
-    x <- read_delim(file_name, col_names = FALSE, delim = "\t", col_types = cols())
+    x <- read_delim(file_name, col_names = FALSE, delim = "\t", col_types = cols(),
+                         show_col_types = FALSE, progress = FALSE, name_repair = "unique_quiet")
 
     isa_stru <- tibble(col_name = as.matrix(x)[1, ]) %>%
         mutate(col_id = paste0("ID", 1:n())) %>%
@@ -12,8 +13,9 @@
         fill(.data[["node_name"]]) %>%
         fill(.data[["node_id"]])
 
+    x <- read_delim(file_name, col_names = FALSE, delim = "\t", skip = 1, col_types = cols(),
+                         show_col_types = FALSE, progress = FALSE, name_repair = "unique_quiet")
 
-    x <- read_delim(file_name, col_names = FALSE, delim = "\t", skip = 1, col_types = cols())
     x <- as.colorDF(x)
     colnames(x) <- isa_stru[["col_id"]]
 

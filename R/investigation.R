@@ -371,6 +371,30 @@ print.isa_i <- function(x, ...) {
 
 }
 
+.study_summary <- function(study, prefix = "") {
+
+  tmp <- study[["STUDY"]] |>
+      mutate(Field = gsub("Study ", "", .data[["Field"]])) |>
+      filter(!is.na(.data[["C1"]]))
+
+  for (i in 1:nrow(tmp)) {
+    cat(prefix)
+    cat(paste(tmp[i, ], collapse = "\t"))
+    cat("\n")
+  }
+
+  cat(glue("{prefix}Assays:"))
+  cat("\n")
+  assays <- setdiff(colnames(study$STUDY_ASSAYS), "Field")
+  sel <- which(study$STUDY_ASSAYS$Field == "Study Assay File Name")
+  for(a in assays) {
+    cat(glue("{prefix}  file: {study$STUDY_ASSAYS[[a]][sel]}"))
+    cat("\n")
+  }
+
+}
+
+
 #' @export
 summary.isa_i <- function(object, ...) {
     x <- object
@@ -391,14 +415,7 @@ summary.isa_i <- function(object, ...) {
     for (i in 1:length(x$STUDIES)) {
         cat(glue("  Study {i}:"))
         cat("\n")
-        tmp <- x$STUDIES[[i]][["STUDY"]] %>%
-            mutate(Field = gsub("Study ", "", .data[["Field"]])) %>%
-            filter(!is.na(.data[["C1"]]))
-        for (i in 1:nrow(tmp)) {
-            cat("    ")
-            cat(paste(tmp[i, ], collapse = "\t"))
-            cat("\n")
-        }
+        .study_summary(x$STUDIES[[i]], "    ")
     }
 
 
