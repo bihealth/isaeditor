@@ -28,7 +28,9 @@
 #' Read or write an isatab file
 #'
 #' @param x isatab object
-#' @param file file name to read / write
+#' @param file file name to read / write. For write_isa, if file is
+#' missing, the function will return the isatab object as a character
+#' vector. If file is not missing, the function will return the file name.
 #' @param type Either 'auto', or 'investigation', 'study', 'assay' (can
 #' be abbreviated)
 #' @importFrom readr read_delim cols read_tsv
@@ -93,12 +95,82 @@ isa_get_nodes <- function(x) {
 #' @importFrom methods is
 #' @importFrom readr write_delim
 #' @export
-write_isa <- function(x, file) {
-    stopifnot(is(x, "isatab"))
-
+write_isa <- function(x, file = NULL) {
+  if(is(x, "isatab")) {
     tmp <- rbind(x$isa_stru[["col_name"]], x$contents)
     tmp[is.na(tmp)] <- ""
-    write_delim(tmp, file, delim = "\t", col_names = FALSE)
+
+    if (missing(file)) {
+      ret <- format_delim(tmp, delim = "\t", col_names = FALSE)
+      return(ret)
+    } else {
+      write_delim(tmp, file, delim = "\t", col_names = FALSE)
+      return(file)
+    }
+  }
+
+  stopifnot(is(x, "isa_i"))
+
+  # ok, so we have a full investigation
+  if(!missing(file)) {
+    basedir <- dirname(file)
+    message("Creating directory ", basedir)
+    dir.create(basedir, showWarnings = FALSE)
+  }
+
+  # write the investigation file
+  # keep in mind that if file is NULL we need to catch the return value
+  inv <- write_investigation(x, file)
+
+  # write the study files
+  studies <- lapply(x$STUDIES, \(s) {
+    study_file <- s$STUDY[["C1"]][ s$STUDY$Field == "Study File Name" ]
+
+    if(!is.null(file)) {
+      message("Writing study ", study_file)
+      ret <- write_isa(s$ISATAB, file = file.path(basedir, study_file))
+    } else {
+      ret <- list(write_isa(s$ISATAB))
+    }
+
+    names(ret) <- study_file
+    ret
+
+  })
+
+  # write the assay files
+  assays <- lapply(x$STUDIES, \(s) {
+    ass_df <- s$STUDY_ASSAYS
+    ass_ids <- setdiff(colnames(ass_df), "Field")
+    sel <- ass_df$Field == "Study Assay File Name"
+
+    ass_files <- sapply(ass_ids, \(aid) {
+      ass_df[[aid]][sel]
+    })
+
+    ret <- lapply(ass_ids, \(aid) {
+      assay_file <- ass_df[[aid]][sel]
+      if(!is.null(file)) {
+        message("Writing assay ", assay_file)
+        ret <- write_isa(s$.assays[[aid]], file = file.path(basedir, assay_file))
+      } else {
+        ret <- write_isa(s$.assays[[aid]])
+      }
+    })
+    names(ret) <- ass_files
+    ret
+  })
+
+  ret <- c("i_investigation.txt" = inv, 
+              unlist(studies, recursive = T), 
+              unlist(assays, recursive = T))
+  if(!is.null(file)) {
+    names(ret)[1] <- file
+    return(invisible(ret))
+  } else {
+    return(ret)
+  }
+
 }
 
 
