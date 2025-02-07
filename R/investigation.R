@@ -54,18 +54,23 @@ protocol_fields <- c(
   "Components Type Term Accession Number",
   "Components Type Term Source REF")
 
+# ---------------------------------------------------------------------
+# Functions to convert the ISA investigation file to text
+# ---------------------------------------------------------------------
+
 # reverse the .process_section function
 .section_to_text <- function(section, title = NULL) {
 
+  section[is.na(section)] <- '""'
+
   # convert the data frame to a character vector of length 1
   # by pasting the columns and rows together
+
+  # we don't use format_delim here because of the weird way that isatab is
+  # requiring quotes
   ret <- paste0(
-    apply(section, 1, \(x) {
-
-            x[is.na(x)] <- '""'
-            paste(x, collapse = "\t")
-
-         }),
+    # inner: paste the columns together
+    apply(section, 1, \(x) paste(x, collapse = "\t")),
     collapse = "\n"
   )
 
@@ -76,7 +81,7 @@ protocol_fields <- c(
   ret
 }
 
-
+# convert the whole investigation to text
 .investigation_to_text <- function(i) {
 
   if(!"isa_i" %in% class(i)) {
@@ -87,19 +92,24 @@ protocol_fields <- c(
 
   ret <- lapply(blocks, \(section) {
       id <- blocks_names[section]
+
+      # studies have their own function
       if(id == "STUDY") {
-        return(.studies_to_text(i$STUDIES))
+        .studies_to_text(i$STUDIES)
+      } else {
+        .section_to_text(i[[id]], section)
       }
-      .section_to_text(i[[id]], section)
   })
 
   ret <- paste0(ret, collapse = "\n")
   ret
 }
 
+# convert a protocol to a single data frame
 .protocol_to_df <- function(prot) {
 
   ret <- prot$Protocol 
+
   colnames(ret) <- c("Section", "Value")
   ret$Value[is.na(ret$Value)] <- '""'
 
@@ -119,6 +129,7 @@ protocol_fields <- c(
                   }))
   ret <- rbind(ret, p)
 
+  # make sure that the protocol fields are correct
   if(!setequal(ret$Section, protocol_fields)) {
     actual <- paste(ret$Section, collapse = ", ")
     forbidden <- paste(setdiff(ret$Section, protocol_fields), collapse = ", ")
@@ -126,12 +137,15 @@ protocol_fields <- c(
     stop(glue("Protocol fields do not match the expected fields;\nactual: {actual}\nmissing: {missing}\nnot allowed: {forbidden}"))
   }
 
+  # put the fields in a specific order
   ret <- ret[ match(protocol_fields, ret$Section), ]
 
+  # add the section name
   ret$Section <- paste0("Study Protocol ", ret$Section)
   ret
 }
 
+# convert a list of protocols to text
 .protocol_to_text <- function(protocols) {
 
   prot_df <- lapply(protocols, .protocol_to_df)
@@ -140,12 +154,15 @@ protocol_fields <- c(
 
 }
 
+# convert a study to text
 .study_to_text <- function(study) {
 
   ret <- lapply(study_blocks, \(section) {
       id <- study_blocks_names[section]
+
+      # protocols have their own function
       if(id == "STUDY_PROTOCOLS") {
-        return(.protocol_to_text(study$STUDY_PROTOCOLS))
+        .protocol_to_text(study$STUDY_PROTOCOLS)
       } else {
         .section_to_text(study[[id]], section)
       }
@@ -156,6 +173,7 @@ protocol_fields <- c(
   ret
 }
 
+# convert a list of studies to text
 .studies_to_text <- function(studies) {
 
   ret <- lapply(studies, .study_to_text)
@@ -163,6 +181,15 @@ protocol_fields <- c(
 }
 
 
+# ---------------------------------------------------------------------
+# Functions to parse the ISA investigation file
+# ---------------------------------------------------------------------
+
+# read_delim with sensible options
+.text_to_df <- function(text) {
+  read_delim(text, delim = ";", na="NA", col_names = FALSE, 
+                   show_col_types = FALSE, progress = FALSE, name_repair = "unique_quiet")
+}
 
 ## parse a single study protocol
 .protocol_digest <- function(p_id, proto) {
@@ -175,12 +202,18 @@ protocol_fields <- c(
 
   param_sel <- grep("^Parameters", proto[["Section"]])
   text <- paste0(proto[[p_id]][param_sel], collapse = "\n")
-  ret[["Parameters"]] <- cbind(proto[["Section"]][param_sel], read_delim(text, delim = ";", na="NA", col_names = FALSE))
+
+  df <- .text_to_df(text)
+
+  ret[["Parameters"]] <- cbind(proto[["Section"]][param_sel], df)
   colnames(ret[["Parameters"]]) <- c("Label", paste0("P", 1:(ncol(ret[["Parameters"]]) - 1)))
 
   param_sel <- grep("^Components", proto[["Section"]])
   text <- paste0(proto[[p_id]][param_sel], collapse = "\n")
-  ret[["Components"]] <- cbind(proto[["Section"]][param_sel], read_delim(text, delim = ";", na="NA", col_names = FALSE))
+
+  df <- .text_to_df(text)
+
+  ret[["Components"]] <- cbind(proto[["Section"]][param_sel], df)
   colnames(ret[["Components"]]) <- c("Label", paste0("C", 1:(ncol(ret[["Components"]]) - 1)))
 
   ret
@@ -202,11 +235,11 @@ protocol_fields <- c(
 ## parse a section
 .process_section <- function(section) {
 
-    ret <- read_tsv(paste(section, collapse = "\n"), col_names = FALSE)
-
-   #if (ncol(ret) < 2) {
-   #    ret <- cbind(ret, "")
-   #}
+    ret <- read_tsv(paste(section, collapse = "\n"), 
+                    col_names = FALSE, 
+                    progress = FALSE, 
+                    show_col_types = FALSE,
+                    name_repair = "unique_quiet")
 
     colnames(ret) <- c("Field", paste0("C", 1:(ncol(ret) - 1)))
 
@@ -221,7 +254,7 @@ protocol_fields <- c(
 
   f_name <- study$STUDY$C1[ study$STUDY$Field == "Study File Name" ]
   message("Reading study isatab file ", f_name)
-  study$.isa <- read_isa(f_name)
+  study$ISATAB <- read_isa(f_name)
 
   assays <- setdiff(colnames(study$STUDY_ASSAYS), "Field")
   sel <- which(study$STUDY_ASSAYS$Field == "Study Assay File Name")
