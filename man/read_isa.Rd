@@ -7,10 +7,12 @@
 \usage{
 read_isa(file, type = "auto")
 
-write_isa(x, file)
+write_isa(x, file = NULL)
 }
 \arguments{
-\item{file}{file name to read / write}
+\item{file}{file name to read / write. For write_isa, if file is
+missing, the function will return the isatab object as a character
+vector. If file is not missing, the function will return the file name.}
 
 \item{type}{Either 'auto', or 'investigation', 'study', 'assay' (can
 be abbreviated)}

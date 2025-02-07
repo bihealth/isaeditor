@@ -90,10 +90,67 @@ isa_get_nodes <- function(x) {
 }
 
 
+#' Convert an investigation to a character vector
+#'
+#' Convert an investigation to a character vector
+#'
+#' This function converts an investigation object to a character vector.
+#' Each element of the vector is a string containint the contents of a
+#' single file. The file names are used as names of the vector elements.
+#  Note that the first element of the vector is the investigation file, and
+#  since this is not included in the isa standard, you need to provide a file name.
+#' @param x object of class isa_i
+#' @param i_file_name name of the investigation file
+#' @return A named character vector. Names are the file names, and values
+#' are the contents of the files.
+#' @export
+isa_to_text <- function(x, i_file_name = "i_Investigation.txt") {
+
+  stopifnot(is(x, "isa_i"))
+
+  # write the investigation file
+  # keep in mind that if file is NULL we need to catch the return value
+  inv <- write_investigation(x)
+
+  # write the study files
+  studies <- lapply(x$STUDIES, \(s) {
+    study_file <- s$STUDY[["C1"]][ s$STUDY$Field == "Study File Name" ]
+    ret <- list()
+    ret[[study_file]] <- write_isa(s$ISATAB)
+    ret
+  })
+
+  # write the assay files
+  assays <- lapply(x$STUDIES, \(s) {
+    ass_df <- s$STUDY_ASSAYS
+    ass_ids <- setdiff(colnames(ass_df), "Field")
+    sel <- ass_df$Field == "Study Assay File Name"
+
+    # yeah, the name ass is on purpose, because I hate isatab
+    ass_files <- sapply(ass_ids, \(aid) {
+      ass_df[[aid]][sel]
+    })
+
+    ret <- lapply(ass_ids, \(aid) {
+      assay_file <- ass_df[[aid]][sel]
+      ret <- write_isa(s$.assays[[aid]])
+    })
+
+    names(ret) <- ass_files
+    ret
+  })
+
+  ret <- c(inv, 
+              unlist(studies, recursive = T), 
+              unlist(assays, recursive = T))
+  names(ret)[1] <- i_file_name
+  return(ret)
+}
+
 
 #' @rdname read_isa
 #' @importFrom methods is
-#' @importFrom readr write_delim
+#' @importFrom readr write_delim format_delim
 #' @export
 write_isa <- function(x, file = NULL) {
   if(is(x, "isatab")) {
@@ -104,72 +161,35 @@ write_isa <- function(x, file = NULL) {
       ret <- format_delim(tmp, delim = "\t", col_names = FALSE)
       return(ret)
     } else {
-      write_delim(tmp, file, delim = "\t", col_names = FALSE)
+      write_delim(tmp, file, delim = "\t", col_names = FALSE, progress = FALSE)
       return(file)
     }
   }
 
   stopifnot(is(x, "isa_i"))
 
+  base_name <- NULL
+
   # ok, so we have a full investigation
   if(!missing(file)) {
     basedir <- dirname(file)
+    base_name <- basename(file)
     message("Creating directory ", basedir)
     dir.create(basedir, showWarnings = FALSE)
   }
 
-  # write the investigation file
-  # keep in mind that if file is NULL we need to catch the return value
-  inv <- write_investigation(x, file)
+  ret <- isa_to_text(x, i_file_name = base_name)
 
-  # write the study files
-  studies <- lapply(x$STUDIES, \(s) {
-    study_file <- s$STUDY[["C1"]][ s$STUDY$Field == "Study File Name" ]
-
-    if(!is.null(file)) {
-      message("Writing study ", study_file)
-      ret <- write_isa(s$ISATAB, file = file.path(basedir, study_file))
-    } else {
-      ret <- list(write_isa(s$ISATAB))
-    }
-
-    names(ret) <- study_file
-    ret
-
-  })
-
-  # write the assay files
-  assays <- lapply(x$STUDIES, \(s) {
-    ass_df <- s$STUDY_ASSAYS
-    ass_ids <- setdiff(colnames(ass_df), "Field")
-    sel <- ass_df$Field == "Study Assay File Name"
-
-    ass_files <- sapply(ass_ids, \(aid) {
-      ass_df[[aid]][sel]
-    })
-
-    ret <- lapply(ass_ids, \(aid) {
-      assay_file <- ass_df[[aid]][sel]
-      if(!is.null(file)) {
-        message("Writing assay ", assay_file)
-        ret <- write_isa(s$.assays[[aid]], file = file.path(basedir, assay_file))
-      } else {
-        ret <- write_isa(s$.assays[[aid]])
-      }
-    })
-    names(ret) <- ass_files
-    ret
-  })
-
-  ret <- c("i_investigation.txt" = inv, 
-              unlist(studies, recursive = T), 
-              unlist(assays, recursive = T))
   if(!is.null(file)) {
-    names(ret)[1] <- file
+    lapply(names(ret), \(n) {
+      out <- file.path(dirname(file), n)
+      message("Writing file ", out)
+      writeLines(ret[[n]], out)
+    })
     return(invisible(ret))
-  } else {
-    return(ret)
   }
+
+  return(ret)
 
 }
 

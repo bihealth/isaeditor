@@ -103,13 +103,15 @@ select a node identifier
 (e.g. 'Protocol REF') and, optionally, a property identifier (e.g.
 'Performer'), or by using the \code{[[} function to select column IDs. The former has the disadvantage that
 multiple identical node / property identifier combinations may exist,
-and it may be necessary to specify which node is meant:\preformatted{isa_a <- read_isa('a_isatab.txt')
+and it may be necessary to specify which node is meant:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{isa_a <- read_isa('a_isatab.txt')
 isa_a[ 'Sample Name' ]
 isa_a[ 'Protocol REF', 'Performer' ]
 ## 3rd instance of the combination Protocol REF / Performer
 isa_a[ 'Protocol REF', 'Performer', n=3 ]
 isa_a[ 'Protocol REF', 'Performer', n=3 ] <- 'Rosalind Franklin'
-}
+}\if{html}{\out{</div>}}
 
 Assigning a NULL value to a selected node is equivalent to removing this
 node and all its properties.
@@ -120,12 +122,14 @@ property.
 Using column IDs with the \code{[[} function is not ambiguous, but column IDs are a trick
 used by the package \code{isaeditor} and are not exported or read from an
 actual ISA-tab. To view the column IDs, simply print the isatab object to the
-screen or inspect the \code{isa_stru} element of the object:\preformatted{isa_s <- read_isa('s_isatab.txt')
+screen or inspect the \code{isa_stru} element of the object:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{isa_s <- read_isa('s_isatab.txt')
 isa_s
 isa_s$isa_stru
 isa_s[['ID21']]
 isa_s[['ID21']] <- 'Rosalind Franklin'
-}
+}\if{html}{\out{</div>}}
 
 Both \code{[} and \code{[[} return a vector if a single column is specified and a data
 frame if more than one column is selected.
@@ -134,28 +138,36 @@ frame if more than one column is selected.
 \subsection{Creating and removing nodes and properties}{
 
 Nodes and properties can either be created with \code{\link[=isa_node_add]{isa_node_add()}} and
-\code{\link[=isa_property_add]{isa_property_add()}} or with assigning a value to a new node with \verb{[<-}:\preformatted{isa_a['Test Node'] <- c(1, 2, 3)
+\code{\link[=isa_property_add]{isa_property_add()}} or with assigning a value to a new node with \verb{[<-}:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{isa_a['Test Node'] <- c(1, 2, 3)
 isa_a['Test Node', 'Test Property'] <- 5:7
-}
+}\if{html}{\out{</div>}}
 
 In the above code, first the node \verb{Test Node} was created and filled
 with values 1:3, and then the property \verb{Test Property} was created and
 filled with 5:7. This can be shortened by assigning a data frame in one
-step:\preformatted{isa_a['Test Node', 'Test Property'] <- data.frame(1:3, 5:7)
-}
+step:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{isa_a['Test Node', 'Test Property'] <- data.frame(1:3, 5:7)
+}\if{html}{\out{</div>}}
 
 A column ID can be specified to insert the node at a position relative
 to another node, or the property at a position relative to another
-property:\preformatted{isa_a[ 'Test Node', after_id='ID1' ] <- 1:3
-}
+property:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{isa_a[ 'Test Node', after_id='ID1' ] <- 1:3
+}\if{html}{\out{</div>}}
 
 Removing nodes and properties works by assigning \code{NULL} to either a node
 (in which case all node properties will be removed as well) or a
-property.\preformatted{# remove only one property
+property.
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{# remove only one property
 isa_a['Test Node', 'Test Property'] <- NULL
 # remove node and its properties
 isa_a['Test Node'] <- NULL
-}
+}\if{html}{\out{</div>}}
 }
 }
 \seealso{
