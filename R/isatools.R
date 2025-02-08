@@ -1,29 +1,32 @@
 
 ## reads an assay or study file
+.read_isa_assay_from_file <- function(file_name, type) {
+  x <- read_delim(file_name, col_names = FALSE, delim = "\t", col_types = cols(),
+                       show_col_types = FALSE, progress = FALSE, name_repair = "unique_quiet")
+
+  isa_stru <- tibble(col_name = as.matrix(x)[1, ]) %>%
+      mutate(col_id = paste0("ID", 1:n())) %>%
+      mutate(is_node = grepl("( Name|Protocol REF)$", .data[["col_name"]])) %>%
+      mutate(node_name = ifelse(.data[["is_node"]], .data[["col_name"]], NA)) %>%
+      mutate(node_id = ifelse(.data[["is_node"]], .data[["col_id"]], NA)) %>%
+      fill(.data[["node_name"]]) %>%
+      fill(.data[["node_id"]])
+
+  x <- read_delim(file_name, col_names = FALSE, delim = "\t", skip = 1, col_types = cols(),
+                       show_col_types = FALSE, progress = FALSE, name_repair = "unique_quiet")
+
+  x <- as.colorDF(x)
+  colnames(x) <- isa_stru[["col_id"]]
+
+  list(isa_stru = isa_stru, contents = x, n = nrow(x), type = type)
+}
+
 .read_isa_assay <- function(file_name, type) {
 
-    x <- read_delim(file_name, col_names = FALSE, delim = "\t", col_types = cols(),
-                         show_col_types = FALSE, progress = FALSE, name_repair = "unique_quiet")
+  ret <- .read_isa_assay_from_file(file_name, type)
+  class(ret) <- c("isatab")  #, class(ret))
 
-    isa_stru <- tibble(col_name = as.matrix(x)[1, ]) %>%
-        mutate(col_id = paste0("ID", 1:n())) %>%
-        mutate(is_node = grepl("( Name|Protocol REF)$", .data[["col_name"]])) %>%
-        mutate(node_name = ifelse(.data[["is_node"]], .data[["col_name"]], NA)) %>%
-        mutate(node_id = ifelse(.data[["is_node"]], .data[["col_id"]], NA)) %>%
-        fill(.data[["node_name"]]) %>%
-        fill(.data[["node_id"]])
-
-    x <- read_delim(file_name, col_names = FALSE, delim = "\t", skip = 1, col_types = cols(),
-                         show_col_types = FALSE, progress = FALSE, name_repair = "unique_quiet")
-
-    x <- as.colorDF(x)
-    colnames(x) <- isa_stru[["col_id"]]
-
-    ret <- list(isa_stru = isa_stru, contents = x, n = nrow(x), type = type)
-
-    class(ret) <- c("isatab")  #, class(ret))
-
-    .check_integrity(ret)
+  .check_integrity(ret)
 }
 
 
