@@ -1,21 +1,68 @@
+.summary_r6 <- function(x) {
 
+  nodes <- x$nodes
+  nodes_n <- length(nodes)
 
-#' @importFrom R6 R6Class
+  cat(style(glue("Isatab of type {x$type} with {x$n} samples and {nodes_n} nodes."), "italic"))
+  cat("\n")
 
-IsaTab <- R6Class("IsaTab",
+  for (n in names(nodes)) {
+    node_name <- gsub(" Name$", "", nodes[n])
+    node_pos <- which(x$isa_stru$node_id == n & x$isa_stru$is_node)
+    node_val <- x$isa_data[[node_pos]][1]
+    node_d <- filter(x$isa_stru, .data[["node_id"]] == n & !.data[["is_node"]])
+    cat(style(glue("Node {node_name} [{n}] ({node_val}...)"), "bold"))
+    cat("\n")
+    if (nrow(node_d) > 0) {
+
+      for (i in 1:nrow(node_d)) {
+
+          val <- .val_summary(x$isa_data[[node_pos + i]])
+          cn <- node_d[["col_name"]][i]
+          cid <- node_d[["col_id"]][i]
+          ws <- "  "
+
+          if (grepl("^(Unit|Term)", cn)) {
+            ws <- "    "
+          }
+          cat(glue("{ws}{cn} [{cid}] ({val})\n", .trim = FALSE))
+
+      }
+    }
+  }
+
+}
+
+#' R6 Class Representing ISA-Tab Study or Assay data
+#'
+#' @description
+#' blabla
+#'
+#' @details
+#' bla bla
+IsaTab <- R6::R6Class("IsaTab",
   public = list(
 
+    #' @field isa_stru A data frame with the ISA-Tab structure
     isa_stru = NULL,
+
+    #' @field isa_data A list with the ISA-Tab data
     isa_data = NULL,
+
+    #' @field type The type of ISA-Tab object (study or assay)
     type = NULL,
 
     # Constructor
-    initialize = function() {
+    #' @param type The type of ISA-Tab object (study or assay)
+    initialize = function(type = "study") {
       message("IsaTab object created")
-
     },
 
-    # set value of a node or property
+    #' @param id The id of the node or property
+    #' @param value The value to set
+    #' @description
+    #' Set a value for a node or property in the ISA-Tab data
+    #' using the internal ID.
     set = function(id, value) {
       stopifnot(!is.null(self$isa_stru))
       stopifnot(all(id %in% self$isa_stru$col_id))
@@ -38,7 +85,10 @@ IsaTab <- R6Class("IsaTab",
       invisible(self)
     },
 
-    # remove a node
+    #' @description
+    #' Remove a node and its properties from the ISA-Tab data
+    #' using the internal ID.
+    #' @param node_id The id of the node to remove
     node_rm = function(node_id) {
       stopifnot(!is.null(self$isa_stru))
       stopifnot(all(node_id %in% self$isa_stru$col_id))
@@ -56,7 +106,10 @@ IsaTab <- R6Class("IsaTab",
       invisible(self)
     },
 
-    # remove a property
+    #' @description
+    #' Remove a property from the ISA-Tab data
+    #' using the internal ID.
+    #' @param prop_id The id of the property to remove
     prop_rm = function(prop_id) {
       stopifnot(!is.null(self$isa_stru))
       stopifnot(all(prop_id %in% self$isa_stru$col_id))
@@ -71,7 +124,9 @@ IsaTab <- R6Class("IsaTab",
       invisible(self)
     },
 
-    # convert to a data frame
+    #' @description
+    #' Convert IsaTab to a data frame.
+    #' @return A data frame with the ISA-Tab data
     as_data_frame = function() {
       if(is.null(self$isa_stru)) {
         return(NULL)
@@ -83,51 +138,26 @@ IsaTab <- R6Class("IsaTab",
       tmp
     },
 
-    # load from a file
-    load_file = function(file, type = "study") {
+    #' @description
+    #' Load an assay or study from a file
+    #' @param file The file to load
+    load_file = function(file) {
+      type <- self$type
       message("Loading ISA file, type: ", type)
       tmp <- .read_isa_assay_from_file(file, type)
       self$isa_stru <- tmp$isa_stru
       self$isa_data <- tmp$contents
+      invisible(self)
     },
 
-    # summary function
+    #' @description
+    #' Shows summary of the ISA-Tab data
     summary = function() {
-
-      x <- self
-      nodes <- self$nodes
-      nodes_n <- length(nodes)
-
-      cat(style(glue("Isatab of type {x$type} with {x$n} samples and {nodes_n} nodes."), "italic"))
-      cat("\n")
-
-      for (n in names(nodes)) {
-        node_name <- gsub(" Name$", "", nodes[n])
-        node_pos <- which(x$isa_stru$node_id == n & x$isa_stru$is_node)
-        node_val <- x$isa_data[[node_pos]][1]
-        node_d <- filter(x$isa_stru, .data[["node_id"]] == n & !.data[["is_node"]])
-        cat(style(glue("Node {node_name} [{n}] ({node_val}...)"), "bold"))
-        cat("\n")
-        if (nrow(node_d) > 0) {
-
-          for (i in 1:nrow(node_d)) {
-
-              val <- .val_summary(x$isa_data[[node_pos + i]])
-              cn <- node_d[["col_name"]][i]
-              cid <- node_d[["col_id"]][i]
-              ws <- "  "
-
-              if (grepl("^(Unit|Term)", cn)) {
-                ws <- "    "
-              }
-              cat(glue("{ws}{cn} [{cid}] ({val})\n", .trim = FALSE))
-
-          }
-        }
-      }
+      .summary_r6(self)
     },
 
-    # print function
+    #' @description
+    #' Print the ISA-Tab object
     print = function() {
       message("IsaTab object")
       if(is.null(self$isa_stru)) {
@@ -140,7 +170,7 @@ IsaTab <- R6Class("IsaTab",
   ),
 
   active = list(
-    # number of samples
+    #' @field n A numeric vector with the number of samples in the ISA-Tab data
     n = function() {
       if(is.null(self$isa_stru)) {
         return(NULL)
@@ -148,7 +178,7 @@ IsaTab <- R6Class("IsaTab",
       nrow(self$isa_data)
     },
 
-    # dimensions of the data
+    #' @field dim A numeric vector with the dimensions of the ISA-Tab data
     dim = function() {
       if(is.null(self$isa_stru)) {
         return(NULL)
@@ -156,6 +186,7 @@ IsaTab <- R6Class("IsaTab",
       dim(self$isa_data)
     },
 
+    #' @field nodes A character vector with the ISA-Tab nodes
     nodes = function() {
       if(is.null(self$isa_stru)) {
         return(NULL)
@@ -166,7 +197,7 @@ IsaTab <- R6Class("IsaTab",
       ret
     },
 
-    # isa data, but just the nodes
+    #' @field node_df A data frame with the ISA-Tab nodes
     node_df = function() {
       if(is.null(self$isa_stru)) {
         return(NULL)
@@ -184,6 +215,47 @@ IsaTab <- R6Class("IsaTab",
 )
 
 
+
+#' @rdname IsaTab
+#' @export
+`[.IsaTab` <- function(x, node, property = NULL, n = NA) {
+
+  stopifnot(length(node) == 1L)
+
+  if (!node %in% x$isa_stru$node_name) {
+    stop(glue("No such node: \"{node}\""))
+  }
+
+  if (is.null(property)) {
+    property <- node
+  }
+
+  stopifnot(length(property) == 1L)
+
+  sel <- x$isa_stru$is_node & x$isa_stru$node_name == node
+
+  if (sum(sel) > 1L) {
+    if (is.na(n)) {
+      stop(glue("Node name {node} is ambiguous (there are {sum(sel)} nodes called {node}).\nPlease use `[[ID]]` or the `n` parameter."))
+    }
+    if (n > sum(sel)) {
+      n <- sum(sel)
+    }
+    sel <- which(sel)[n]
+  }
+
+  node_id <- x$isa_stru$node_id[sel]
+  node_df <- x$isa_stru[x$isa_stru$node_id == node_id, ]
+
+  if (!all(property %in% node_df$col_name)) {
+    miss <- property[!property %in% node_df$col_name]
+    stop(glue("Properties not in node '{node}' [{node_id}]:\n{paste(miss, collapse='; ')}"))
+  }
+
+  prop_id <- node_df$col_id[match(property, node_df$col_name)]
+
+  x$isa_data[[prop_id]]
+}
 
 
 
