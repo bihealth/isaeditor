@@ -2,16 +2,19 @@
 % Please edit documentation in R/isatab_r6.R
 \name{IsaTab}
 \alias{IsaTab}
-\alias{[.IsaTab}
+\alias{summary.IsaTab}
 \title{R6 Class Representing ISA-Tab Study or Assay data}
 \usage{
-\method{[}{IsaTab}(x, node, property = NULL, n = NA)
+\method{summary}{IsaTab}(object, ...)
 }
 \description{
 blabla
 }
 \details{
 bla bla
+}
+\seealso{
+[<- for IsaTab: \code{\link{[<-.IsaTab}} to modify elements.
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
@@ -41,8 +44,12 @@ bla bla
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-IsaTab-new}{\code{IsaTab$new()}}
+\item \href{#method-IsaTab-get}{\code{IsaTab$get()}}
 \item \href{#method-IsaTab-set}{\code{IsaTab$set()}}
 \item \href{#method-IsaTab-node_rm}{\code{IsaTab$node_rm()}}
+\item \href{#method-IsaTab-find_prop_id}{\code{IsaTab$find_prop_id()}}
+\item \href{#method-IsaTab-find_node_id}{\code{IsaTab$find_node_id()}}
+\item \href{#method-IsaTab-find_id}{\code{IsaTab$find_id()}}
 \item \href{#method-IsaTab-prop_rm}{\code{IsaTab$prop_rm()}}
 \item \href{#method-IsaTab-as_data_frame}{\code{IsaTab$as_data_frame()}}
 \item \href{#method-IsaTab-load_file}{\code{IsaTab$load_file()}}
@@ -63,6 +70,24 @@ bla bla
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{type}}{The type of ISA-Tab object (study or assay)}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IsaTab-get"></a>}}
+\if{latex}{\out{\hypertarget{method-IsaTab-get}{}}}
+\subsection{Method \code{get()}}{
+Get a value for a node or property in the ISA-Tab data
+using the internal ID.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{IsaTab$get(id)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{id}}{The id of the node or property}
 }
 \if{html}{\out{</div>}}
 }
@@ -101,6 +126,66 @@ using the internal ID.
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{node_id}}{The id of the node to remove}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IsaTab-find_prop_id"></a>}}
+\if{latex}{\out{\hypertarget{method-IsaTab-find_prop_id}{}}}
+\subsection{Method \code{find_prop_id()}}{
+Find the internal ID of a property given the node ID and property name
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{IsaTab$find_prop_id(node_id, prop_name)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{node_id}}{The id of the node}
+
+\item{\code{prop_name}}{The name of the property}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IsaTab-find_node_id"></a>}}
+\if{latex}{\out{\hypertarget{method-IsaTab-find_node_id}{}}}
+\subsection{Method \code{find_node_id()}}{
+Find the internal ID of a node based on its name
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{IsaTab$find_node_id(node_name)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{node_name}}{The name of the node}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IsaTab-find_id"></a>}}
+\if{latex}{\out{\hypertarget{method-IsaTab-find_id}{}}}
+\subsection{Method \code{find_id()}}{
+Find the internal ID of a node or property. If the node name is ambiguous,
+an error is thrown. Use the n parameter to select the node by its relative
+position. For example, if there are 3 nodes called "Protocol REF", use
+n = 2 to select the second one.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{IsaTab$find_id(node_name, prop_name = NULL, n = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{node_name}}{The name of the node}
+
+\item{\code{prop_name}}{The name of the property}
+
+\item{\code{n}}{The position of the node to select (if there are multiple nodes with the same name)}
 }
 \if{html}{\out{</div>}}
 }

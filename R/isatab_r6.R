@@ -40,6 +40,7 @@
 #'
 #' @details
 #' bla bla
+#' @seealso [<- for IsaTab: \code{\link{[<-.IsaTab}} to modify elements.
 IsaTab <- R6::R6Class("IsaTab",
   public = list(
 
@@ -56,6 +57,18 @@ IsaTab <- R6::R6Class("IsaTab",
     #' @param type The type of ISA-Tab object (study or assay)
     initialize = function(type = "study") {
       message("IsaTab object created")
+    },
+
+    #' @param id The id of the node or property
+    #' @description
+    #' Get a value for a node or property in the ISA-Tab data
+    #' using the internal ID.
+    get = function(id) {
+      stopifnot(!is.null(self$isa_stru))
+      stopifnot(all(id %in% self$isa_stru$col_id))
+      stopifnot(length(id) == 1)
+
+      self$isa_data[[id]]
     },
 
     #' @param id The id of the node or property
@@ -104,6 +117,78 @@ IsaTab <- R6::R6Class("IsaTab",
       self$isa_stru <- self$isa_stru[!sel, ]
       self$isa_data <- self$isa_data[ , !sel, drop = F]
       invisible(self)
+    },
+
+    #' @description
+    #' Find the internal ID of a property given the node ID and property name
+    #' @param node_id The id of the node
+    #' @param prop_name The name of the property
+    find_prop_id = function(node_id, prop_name) {
+      stopifnot(!is.null(self$isa_stru))
+      stopifnot(all(node_id %in% self$isa_stru$node_id))
+
+      sel <- self$isa_stru$node_id == node_id & !self$isa_stru$is_node
+      df <- self$isa_stru[sel, ]
+
+      if(!all(prop_name %in% df$col_name)) {
+        stop(glue("Properties not in node '{node_id}':\n{paste(prop_name[!prop_name %in% df$col_name], collapse='; ')}"))
+      }
+
+      ret <- df$col_id[ match(prop_name, df$col_name) ]
+      names(ret) <- prop_name
+      ret
+    },
+
+    #' @description
+    #' Find the internal ID of a node based on its name
+    #' @param node_name The name of the node
+    find_node_id = function(node_name) {
+      stopifnot(!is.null(self$isa_stru))
+      stopifnot(node_name %in% self$isa_stru$col_name)
+
+      self$isa_stru$node_id[ self$isa_stru$col_name == node_name ]
+    },
+
+
+    #' @description
+    #' Find the internal ID of a node or property. If the node name is ambiguous,
+    #' an error is thrown. Use the n parameter to select the node by its relative 
+    #' position. For example, if there are 3 nodes called "Protocol REF", use
+    #' n = 2 to select the second one.
+    #' @param node_name The name of the node
+    #' @param prop_name The name of the property
+    #' @param n The position of the node to select (if there are multiple nodes with the same name)
+    find_id = function(node_name, prop_name = NULL, n = NULL) {
+      stopifnot(!is.null(self$isa_stru))
+      ret <- list()
+
+      node_ids <- self$find_node_id(node_name)
+
+      if(length(node_ids) == 0) {
+        stop(glue("No such node: {node_name}"))
+      }
+
+      if(length(node_ids) > 1) {
+        if(is.null(n)) {
+          stop(glue("Node name {node_name} is ambiguous (there are {length(node_ids)} nodes called {node_name}).\nPlease use `[[ID]]` or the `n` parameter."))
+        }
+
+        stopifnot(is.numeric(n) && length(n) == 1 && n > 0)
+
+        if(n > length(node_ids)) {
+          stop(glue("There are only {length(node_ids)} nodes called {node_name}."))
+        }
+
+        node_ids <- node_ids[n]
+      }
+
+      if(is.null(prop_name)) {
+        ret <- node_ids
+      } else {
+        ret <- self$find_prop_id(node_ids, prop_name)
+      }
+
+      ret
     },
 
     #' @description
@@ -214,9 +299,78 @@ IsaTab <- R6::R6Class("IsaTab",
   )
 )
 
-
-
 #' @rdname IsaTab
+#' @export
+summary.IsaTab <- function(object, ...) {
+  object$summary()
+}
+
+
+#' Subset Methods for IsaTab Objects
+#'
+#' This page provides an overview of the subset and subset-assignment methods for objects of class `IsaTab`.
+#'
+#' The following methods are implemented:
+#' \itemize{
+#'   \item \code{\link{[.IsaTab}}: Subset elements using `[`.
+#'   \item \code{\link{[[.IsaTab}}: Extract elements using `[[`.
+#'   \item \code{\link{[<-.IsaTab}}: Modify elements using `[<-`.
+#'   \item \code{\link{[[<-.IsaTab}}: Modify nested elements using `[[<-`.
+#' }
+#'
+#' @section Subsetting:
+#' The `[`, `[[`, and `[<-` methods allow for flexible subsetting and modification of `IsaTab` objects.
+#'
+#' @seealso \code{\link{IsaTab}}
+#' @name IsaTab-subset-methods
+#' @aliases [ IsaTab-subset [[ [<- [[<-
+
+#' Subset ISA-Tab data by column ID
+#'
+#' Subset ISA-Tab data by column ID
+#'
+#' Extract a node or property from the ISA-Tab data by its ID. Note that in the
+#' ISAtab standard, there can be multiple nodes with the same name. The
+#' ISAtab class assigns unique IDs to each node and property. However,
+#' these IDs are not a part of the ISAtab standard and are only used
+#' internally in the R package.
+#' @param x An IsaTab object
+#' @param i The ID of the node or property to extract
+#' @method [[ IsaTab
+#' @return A data frame with the extracted node or property
+#' @seealso \code{\link{IsaTab-subset-methods}}
+#' @export
+`[[.IsaTab` <- function(x, i) {
+  x$get(i)
+}
+
+#' Modify ISA-Tab data by column ID
+#'
+#' Modify ISA-Tab data by column ID
+#' @param x An IsaTab object
+#' @param i The ID of the node or property to modify
+#' @param value The value to set
+#' @method [[<- IsaTab
+#' @export
+`[[<-.IsaTab` <- function(x, i, value) {
+  x$set(i, value)
+}
+
+#' Subset ISA-Tab data by node and property name
+#'
+#' Subset ISA-Tab data by node and property name
+#'
+#' Extract a node or property from the ISA-Tab data by its name. Note that in the
+#' ISAtab standard, there can be multiple nodes with the same name.
+#' Therefore, if there are multiple nodes with the same name, the `n` parameter
+#' can be used to select the node by its position in the ISA-Tab structure.
+#' @param x An IsaTab object
+#' @param node The name of the node to extract
+#' @param property The name of the property to extract
+#' @param n Which node to extract (if there are multiple nodes with the same name)
+#' @method [ IsaTab
+#' @return A data frame with the extracted node or property
+#' @seealso \code{\link{IsaTab-subset-methods}}
 #' @export
 `[.IsaTab` <- function(x, node, property = NULL, n = NA) {
 
@@ -229,8 +383,6 @@ IsaTab <- R6::R6Class("IsaTab",
   if (is.null(property)) {
     property <- node
   }
-
-  stopifnot(length(property) == 1L)
 
   sel <- x$isa_stru$is_node & x$isa_stru$node_name == node
 
@@ -254,7 +406,7 @@ IsaTab <- R6::R6Class("IsaTab",
 
   prop_id <- node_df$col_id[match(property, node_df$col_name)]
 
-  x$isa_data[[prop_id]]
+  x$isa_data[ , prop_id]
 }
 
 
